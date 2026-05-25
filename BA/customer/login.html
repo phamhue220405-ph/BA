@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng nhập / Đăng ký - LuxRent</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/customer.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <style>
+    body { background: linear-gradient(135deg, #FDFBF7 0%, #F7EDE0 40%, #E8D6C2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .auth-card { background: var(--white); border-radius: var(--radius-xl); padding: 40px; max-width: 440px; width: 100%; box-shadow: 0 24px 60px rgba(116,85,68,0.12); border: 1px solid rgba(131,98,72,0.16); }
+    .auth-logo { text-align: center; margin-bottom: 28px; }
+    .auth-logo a { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--rose-gold); }
+    .auth-logo p { font-size: 14px; color: var(--charcoal); margin-top: 4px; }
+    .otp-note { background: rgba(159,62,123,0.08); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; color: var(--rose-gold); margin-bottom: 16px; }
+    .demo-accounts { background: rgba(255,255,255,0.92); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 12px; color: var(--charcoal); margin-top: 16px; }
+    .demo-accounts strong { display: block; margin-bottom: 6px; color: var(--charcoal); }
+  </style>
+</head>
+<body>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <a href="/index.html">
+        <img src="/assets/images/logo.png" alt="Diệu Linh" style="height:72px;object-fit:contain;display:block;margin:0 auto;" />
+      </a>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs" id="authTabs">
+      <button class="tab-btn active" onclick="switchTab('login')">Đăng nhập</button>
+      <button class="tab-btn" onclick="switchTab('register')">Đăng ký</button>
+    </div>
+
+    <!-- Login Form -->
+    <div id="loginForm">
+      <div id="loginError" class="alert alert-error" style="display:none"></div>
+      <div class="form-group">
+        <label>Email hoặc số điện thoại</label>
+        <input type="text" id="loginId" class="form-control" placeholder="email@example.com hoặc 0901234567">
+      </div>
+      <div class="form-group">
+        <label>Mật khẩu</label>
+        <input type="password" id="loginPwd" class="form-control" placeholder="Nhập mật khẩu">
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer">
+          <input type="checkbox" id="rememberMe"> Ghi nhớ đăng nhập
+        </label>
+        <a href="#" onclick="showForgotPwd()" style="font-size:13px;color:var(--primary)">Quên mật khẩu?</a>
+      </div>
+      <button class="btn btn-primary btn-full btn-lg" onclick="doLogin()">Đăng nhập</button>
+      <div class="demo-accounts">
+        <strong>Tài khoản demo:</strong>
+        👤 KH: customer@test.com / Test@123<br>
+        🔧 Admin: admin@store.com / Admin@123<br>
+        📊 Manager: manager@store.com / Manager@123
+      </div>
+    </div>
+
+    <!-- Register Form -->
+    <div id="registerForm" style="display:none">
+      <div id="registerError" class="alert alert-error" style="display:none"></div>
+      <div class="form-group">
+        <label>Họ và tên <span style="color:var(--error)">*</span></label>
+        <input type="text" id="regName" class="form-control" placeholder="Nguyễn Văn A">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="regEmail" class="form-control" placeholder="email@example.com">
+      </div>
+      <div class="form-group">
+        <label>Số điện thoại</label>
+        <input type="tel" id="regPhone" class="form-control" placeholder="0901234567">
+      </div>
+      <div class="form-group">
+        <label>Mật khẩu <span style="color:var(--error)">*</span></label>
+        <input type="password" id="regPwd" class="form-control" placeholder="Tối thiểu 8 ký tự">
+      </div>
+      <div class="form-group">
+        <label>Xác nhận mật khẩu <span style="color:var(--error)">*</span></label>
+        <input type="password" id="regPwd2" class="form-control" placeholder="Nhập lại mật khẩu">
+      </div>
+      <button class="btn btn-primary btn-full btn-lg" onclick="doRegister()">Đăng ký</button>
+    </div>
+
+    <!-- OTP Form -->
+    <div id="otpForm" style="display:none">
+      <div class="otp-note">📱 Mã OTP đã được gửi (xem console để lấy mã demo)</div>
+      <p style="text-align:center;font-size:14px;color:var(--gray-600);margin-bottom:16px">Nhập mã OTP 6 số</p>
+      <div class="otp-inputs">
+        <input type="text" class="otp-input" maxlength="1" oninput="otpNext(this,0)">
+        <input type="text" class="otp-input" maxlength="1" oninput="otpNext(this,1)">
+        <input type="text" class="otp-input" maxlength="1" oninput="otpNext(this,2)">
+        <input type="text" class="otp-input" maxlength="1" oninput="otpNext(this,3)">
+        <input type="text" class="otp-input" maxlength="1" oninput="otpNext(this,4)">
+        <input type="text" class="otp-input" maxlength="1" oninput="otpNext(this,5)">
+      </div>
+      <div id="otpError" class="alert alert-error" style="display:none"></div>
+      <button class="btn btn-primary btn-full btn-lg" onclick="doVerifyOTP()">Xác nhận OTP</button>
+      <button class="btn btn-secondary btn-full" style="margin-top:8px" onclick="doRegister()">Gửi lại OTP</button>
+    </div>
+
+    <!-- Forgot Password -->
+    <div id="forgotForm" style="display:none">
+      <p style="font-size:14px;color:var(--gray-600);margin-bottom:16px">Nhập email hoặc số điện thoại để đặt lại mật khẩu</p>
+      <div class="form-group">
+        <input type="text" id="forgotId" class="form-control" placeholder="Email hoặc số điện thoại">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doForgotPwd()">Gửi mã OTP</button>
+      <button class="btn btn-secondary btn-full" style="margin-top:8px" onclick="switchTab('login')">← Quay lại</button>
+    </div>
+  </div>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    // Check if already logged in
+    const session = StorageService.getSession();
+    if (session) AuthModule.redirectByRole(session.role);
+
+    // Check URL param
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tab') === 'register') switchTab('register');
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register')));
+      document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+      document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+      document.getElementById('otpForm').style.display = 'none';
+      document.getElementById('forgotForm').style.display = 'none';
+    }
+
+    function showForgotPwd() {
+      document.getElementById('loginForm').style.display = 'none';
+      document.getElementById('forgotForm').style.display = 'block';
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    }
+
+    function doLogin() {
+      const id = document.getElementById('loginId').value.trim();
+      const pwd = document.getElementById('loginPwd').value;
+      const remember = document.getElementById('rememberMe').checked;
+      const errEl = document.getElementById('loginError');
+      errEl.style.display = 'none';
+      if (!id || !pwd) { errEl.textContent = 'Vui lòng nhập đầy đủ thông tin'; errEl.style.display = 'flex'; return; }
+      const result = AuthModule.login(id, pwd, remember);
+      if (result.error) { errEl.textContent = result.error; errEl.style.display = 'flex'; return; }
+      const redirect = urlParams.get('redirect') || null;
+      if (redirect) { window.location.href = redirect; return; }
+      AuthModule.redirectByRole(result.session.role);
+    }
+
+    function doRegister() {
+      const result = AuthModule.register({
+        fullName: document.getElementById('regName').value.trim(),
+        email: document.getElementById('regEmail').value.trim(),
+        phone: document.getElementById('regPhone').value.trim(),
+        password: document.getElementById('regPwd').value,
+        confirmPassword: document.getElementById('regPwd2').value,
+      });
+      const errEl = document.getElementById('registerError');
+      if (result.error) { errEl.textContent = result.message || result.error; errEl.style.display = 'flex'; return; }
+      errEl.style.display = 'none';
+      document.getElementById('registerForm').style.display = 'none';
+      document.getElementById('otpForm').style.display = 'block';
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      Toast.show(`OTP: ${result.otp} (demo - xem console)`, 'info');
+    }
+
+    function otpNext(el, idx) {
+      el.value = el.value.replace(/\D/g, '');
+      if (el.value && idx < 5) document.querySelectorAll('.otp-input')[idx + 1].focus();
+    }
+
+    function doVerifyOTP() {
+      const otp = Array.from(document.querySelectorAll('.otp-input')).map(i => i.value).join('');
+      const errEl = document.getElementById('otpError');
+      if (otp.length < 6) { errEl.textContent = 'Vui lòng nhập đủ 6 số'; errEl.style.display = 'flex'; return; }
+      const result = AuthModule.confirmRegister(otp);
+      if (result.error) { errEl.textContent = result.error; errEl.style.display = 'flex'; return; }
+      Toast.show('Đăng ký thành công! Đang chuyển hướng...', 'success');
+      setTimeout(() => { AuthModule.login(result.user.email || result.user.phone, document.getElementById('regPwd').value); AuthModule.redirectByRole('customer'); }, 1500);
+    }
+
+    function doForgotPwd() {
+      Toast.show('Tính năng đặt lại mật khẩu đang được phát triển', 'info');
+    }
+
+    // Enter key
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') { if (document.getElementById('loginForm').style.display !== 'none') doLogin(); } });
+  </script>
+</body>
+</html>
+
+

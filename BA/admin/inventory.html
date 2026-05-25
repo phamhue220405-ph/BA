@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tồn kho - LuxRent Admin</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <main class="admin-main">
+      <div class="admin-topbar"><div class="topbar-title">📋 Quản lý tồn kho</div></div>
+      <div class="admin-content">
+        <div id="lowStockAlert" class="alert alert-warning" style="display:none;margin-bottom:16px"></div>
+        <div class="table-container">
+          <div class="table-header">
+            <div class="table-search"><input type="text" id="searchInput" placeholder="Tìm sản phẩm..." oninput="renderTable()"></div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="admin-table">
+              <thead><tr><th>Sản phẩm</th><th>Size</th><th>Tồn kho</th><th>Trạng thái</th><th>Tình trạng</th><th>Cập nhật lần cuối</th><th>Thao tác</th></tr></thead>
+              <tbody id="invTable"></tbody>
+            </table>
+          </div>
+          <div id="pagination"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="updateModal" class="modal-overlay" style="display:none">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-header"><div class="modal-title">Cập nhật tồn kho</div><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <input type="hidden" id="editProductId"><input type="hidden" id="editSize">
+      <div id="currentInfo" style="background:var(--gray-50);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:14px"></div>
+      <div class="form-group"><label>Số lượng mới *</label><input type="number" id="newQty" class="form-control" min="0"></div>
+      <div class="form-group"><label>Ghi chú tình trạng</label><textarea id="condNotes" class="form-control" rows="2"></textarea></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="saveUpdate()" style="background:var(--admin-primary)">Cập nhật</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/product.js"></script>
+  <script src="../assets/js/inventory.js"></script>
+  <script src="../assets/js/admin-common.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAdminAuth();
+    if (session) {
+      document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('inventory', session);
+      const _canEdit = canEdit('inventory', session.role);
+      let currentPage = 1;
+
+      function renderTable() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const products = StorageService.getAll('crb_products').filter(p => !p.isArchived && !p.deleted);
+        const threshold = StorageService.getRaw('crb_low_stock_threshold') || 3;
+        let rows = [];
+        products.forEach(p => {
+          if (search && !p.name.toLowerCase().includes(search)) return;
+          (p.sizes || []).forEach(size => {
+            const stock = InventoryModule.getStock(p.id, size);
+            rows.push({ product: p, size, stock });
+          });
+        });
+
+        const lowStock = rows.filter(r => r.stock && r.stock.quantity > 0 && r.stock.quantity <= threshold);
+        const alertEl = document.getElementById('lowStockAlert');
+        if (lowStock.length) { alertEl.textContent = `⚠️ ${lowStock.length} biến thể sản phẩm sắp hết hàng (dưới ${threshold} cái)`; alertEl.style.display = 'flex'; }
+        else alertEl.style.display = 'none';
+
+        const paged = paginate(rows, currentPage);
+        const tbody = document.getElementById('invTable');
+        if (!paged.items.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)">Không có dữ liệu</td></tr>'; }
+        else tbody.innerHTML = paged.items.map(({ product: p, size, stock }) => {
+          const qty = stock ? stock.quantity : 0;
+          const isLow = qty > 0 && qty <= threshold;
+          return `<tr>
+            <td><div style="font-weight:600">${p.name}</div></td>
+            <td><span class="tag">${size}</span></td>
+            <td><span style="font-size:18px;font-weight:700;color:${qty === 0 ? 'var(--error)' : isLow ? 'var(--warning)' : 'var(--success)'}">${qty}</span>${isLow ? ' ⚠️' : ''}</td>
+            <td><span class="status-badge status-${stock?.status === 'active' ? 'da_xac_nhan' : 'da_huy'}">${stock?.status === 'active' ? 'Đang bán' : 'Ngừng bán'}</span></td>
+            <td style="font-size:13px;color:var(--gray-500)">${stock?.conditionNotes || '-'}</td>
+            <td style="font-size:12px;color:var(--gray-400)">${stock ? formatDate(stock.updatedAt) : '-'}</td>
+            <td>
+              ${_canEdit ? `<button class="action-btn action-btn-edit" onclick="openUpdate('${p.id}','${size}',${qty},'${stock?.conditionNotes||''}')">Cập nhật</button>` : '<span style="font-size:12px;color:var(--gray-400)">Chỉ xem</span>'}
+            </td>
+          </tr>`;
+        }).join('');
+        renderPagination('pagination', paged, 'goPage');
+      }
+
+      window.goPage = (p) => { currentPage = p; renderTable(); };
+
+      window.openUpdate = (productId, size, currentQty, notes) => {
+        document.getElementById('editProductId').value = productId;
+        document.getElementById('editSize').value = size;
+        document.getElementById('newQty').value = currentQty;
+        document.getElementById('condNotes').value = notes;
+        const p = StorageService.getById('crb_products', productId);
+        document.getElementById('currentInfo').innerHTML = `<strong>${p?.name}</strong> - Size ${size}<br>Tồn kho hiện tại: <strong>${currentQty}</strong>`;
+        document.getElementById('updateModal').style.display = 'flex';
+      };
+      window.closeModal = () => document.getElementById('updateModal').style.display = 'none';
+
+      window.saveUpdate = () => {
+        const productId = document.getElementById('editProductId').value;
+        const size = document.getElementById('editSize').value;
+        const newQty = parseInt(document.getElementById('newQty').value);
+        const notes = document.getElementById('condNotes').value.trim();
+        if (isNaN(newQty) || newQty < 0) { Toast.show('Số lượng không hợp lệ', 'error'); return; }
+        showConfirm(`Cập nhật tồn kho thành ${newQty}?`, () => {
+          InventoryModule.updateStock(productId, size, newQty, session.userId);
+          if (notes) InventoryModule.recordCondition(productId, size, notes, '');
+          Toast.show('Đã cập nhật tồn kho', 'success');
+          closeModal(); renderTable();
+        });
+      };
+
+      renderTable();
+    }
+  </script>
+</body>
+</html>
+
+

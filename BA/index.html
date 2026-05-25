@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LuxRent - Thuê Trang Phục Cao Cấp</title>
+  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/customer.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/index.html" class="navbar-brand">
+        <img src="/assets/images/logo.png" alt="LuxRent" class="site-logo">
+      </a>
+      <div class="navbar-nav">
+        <a href="/index.html" class="nav-link active">Trang chủ</a>
+        <a href="/customer/products.html" class="nav-link">Sản phẩm</a>
+        <a href="/customer/fitting-booking.html" class="nav-link">Đặt lịch thử</a>
+        <a href="/customer/news.html" class="nav-link">Tin tức</a>
+      </div>
+      <div class="navbar-actions">
+        <a href="/customer/cart.html" class="cart-btn">
+          🛒 Giỏ hàng
+          <span class="cart-badge" style="display:none">0</span>
+        </a>
+        <div class="user-menu" id="userMenu">
+          <button class="user-btn" onclick="toggleUserMenu()">
+            <span id="userMenuLabel">👤 Đăng nhập</span> ▾
+          </button>
+          <div class="user-dropdown" id="userDropdown" style="display:none">
+            <div id="guestLinks">
+              <a href="/customer/login.html">🔑 Đăng nhập</a>
+              <a href="/customer/login.html?tab=register">📝 Đăng ký</a>
+            </div>
+            <div id="authLinks" style="display:none">
+              <a href="/customer/profile.html">👤 Hồ sơ</a>
+              <a href="/customer/orders.html">📦 Đơn hàng</a>
+              <hr>
+              <a href="#" onclick="doLogout()">🚪 Đăng xuất</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-badge">🌸 Bộ sưu tập mới 2025</div>
+        <h1>Trang phục <em>sang trọng</em><br>cho ngày đặc biệt</h1>
+        <p>Thuê trang phục cao cấp với giá hợp lý.<br>Đặt lịch thử miễn phí tại cửa hàng Diệu Linh.</p>
+        <div class="hero-actions">
+          <a href="/customer/products.html" class="btn-hero-primary">Xem bộ sưu tập</a>
+          <a href="/customer/fitting-booking.html" class="btn-hero-outline">📅 Đặt lịch thử</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section" style="background: var(--gray-50)">
+    <div class="container">
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">👗</div>
+          <div class="feature-title">Đa dạng mẫu mã</div>
+          <div class="feature-desc">Hàng trăm mẫu trang phục từ áo dài, váy cưới đến đầm dạ hội</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📅</div>
+          <div class="feature-title">Đặt lịch thử miễn phí</div>
+          <div class="feature-desc">Đến cửa hàng thử trang phục trước khi quyết định thuê</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🚚</div>
+          <div class="feature-title">Giao hàng tận nơi</div>
+          <div class="feature-desc">Giao hàng nhanh chóng đến tận địa chỉ của bạn</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💎</div>
+          <div class="feature-title">Tích điểm ưu đãi</div>
+          <div class="feature-desc">Tích lũy điểm sau mỗi lần thuê để nhận ưu đãi hấp dẫn</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Featured Products -->
+  <section class="section">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Nổi bật</div>
+        <h2 class="section-title">Trang phục được yêu thích</h2>
+        <p class="section-subtitle">Những bộ trang phục được khách hàng lựa chọn nhiều nhất</p>
+      </div>
+      <div class="product-grid" id="featuredProducts">
+        <div class="spinner"></div>
+      </div>
+      <div style="text-align:center;margin-top:40px">
+        <a href="/customer/products.html" class="btn btn-outline btn-lg">Xem tất cả sản phẩm →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- News -->
+  <section class="section" style="background: var(--gray-50)">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Tin tức</div>
+        <h2 class="section-title">Khuyến mãi & Sự kiện</h2>
+      </div>
+      <div class="news-grid" id="latestNews">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand">
+            <img src="/assets/images/logo.png" alt="LuxRent" class="site-logo site-logo-large">
+          </div>
+          <p class="footer-desc">Dịch vụ cho thuê trang phục cao cấp. Chúng tôi mang đến những bộ trang phục đẹp nhất cho ngày đặc biệt của bạn.</p>
+        </div>
+        <div>
+          <div class="footer-heading">Dịch vụ</div>
+          <div class="footer-links">
+            <a href="/customer/products.html">Thuê trang phục</a>
+            <a href="/customer/fitting-booking.html">Đặt lịch thử</a>
+            <a href="/customer/orders.html">Theo dõi đơn hàng</a>
+          </div>
+        </div>
+        <div>
+          <div class="footer-heading">Hỗ trợ</div>
+          <div class="footer-links">
+            <a href="#">Hướng dẫn thuê</a>
+            <a href="#">Chính sách hoàn trả</a>
+            <a href="#">Liên hệ</a>
+          </div>
+        </div>
+        <div>
+          <div class="footer-heading">Liên hệ</div>
+          <div class="footer-links">
+            <a href="#">📍 123 Đường ABC, TP.HCM</a>
+            <a href="#">📞 0901 234 567</a>
+            <a href="#">✉️ info@luxrent.vn</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">© 2025 Diệu Linh Clothing Boutique. Tất cả quyền được bảo lưu.</div>
+    </div>
+  </footer>
+
+  <script src="assets/js/storage.js"></script>
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/product.js"></script>
+  <script src="assets/js/cart.js"></script>
+  <script src="assets/js/order.js"></script>
+  <script src="assets/js/promotion.js"></script>
+  <script src="assets/js/seed.js"></script>
+  <script>
+    // Init
+    const session = StorageService.getSession();
+    if (session) {
+      document.getElementById('userMenuLabel').textContent = '👤 ' + session.fullName;
+      document.getElementById('guestLinks').style.display = 'none';
+      document.getElementById('authLinks').style.display = 'block';
+      CartModule.updateCartBadge(session.userId);
+    }
+
+    function toggleUserMenu() {
+      const dd = document.getElementById('userDropdown');
+      dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    }
+    document.addEventListener('click', e => {
+      if (!document.getElementById('userMenu').contains(e.target)) {
+        document.getElementById('userDropdown').style.display = 'none';
+      }
+    });
+    function doLogout() { AuthModule.logout(); }
+
+    // Load featured products
+    function renderFeaturedProducts() {
+      const products = ProductModule.getAll().slice(0, 4);
+      const cats = ProductModule.getCategories();
+      const container = document.getElementById('featuredProducts');
+      if (!products.length) { container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👗</div><div class="empty-state-title">Chưa có sản phẩm</div></div>'; return; }
+      container.innerHTML = products.map(p => {
+        const cat = cats.find(c => c.id === p.categoryId);
+        return `<div class="product-card">
+          <div class="product-img">
+            <img src="${p.images[0] || 'https://via.placeholder.com/300x400?text=No+Image'}" alt="${p.name}" loading="lazy">
+            <div class="product-img-overlay">
+              <button class="btn btn-sm" style="background:rgba(255,255,255,0.9);color:var(--primary);flex:1" onclick="location.href='/customer/product-detail.html?id=${p.id}'">Xem chi tiết</button>
+            </div>
+          </div>
+          <div class="product-info">
+            <div class="product-category">${cat?.name || ''}</div>
+            <div class="product-name">${p.name}</div>
+            <div class="product-price">
+              <span class="product-price-main">${formatCurrency(p.rentalPricePerDay)}</span>
+              <span class="product-price-unit">/ngày</span>
+            </div>
+            <div class="product-actions">
+              <button class="btn btn-outline btn-sm" onclick="location.href='/customer/fitting-booking.html?productId=${p.id}'">📅 Thử</button>
+              <button class="btn btn-primary btn-sm" onclick="location.href='/customer/product-detail.html?id=${p.id}'">🛒 Thuê</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderLatestNews() {
+      const posts = PromotionModule.getAllPosts(true).slice(0, 3);
+      const container = document.getElementById('latestNews');
+      if (!posts.length) { container.innerHTML = '<p style="color:var(--gray-400);text-align:center">Chưa có tin tức</p>'; return; }
+      container.innerHTML = posts.map(p => `
+        <div class="news-card">
+          <div class="news-img"><img src="${p.images[0] || 'https://via.placeholder.com/600x338?text=News'}" alt="${p.title}" loading="lazy"></div>
+          <div class="news-body">
+            <div class="news-date">${formatDate(p.createdAt)}</div>
+            <div class="news-title">${p.title}</div>
+            <div class="news-excerpt">${p.content.replace(/<[^>]+>/g, '').slice(0, 120)}...</div>
+          </div>
+        </div>`).join('');
+    }
+
+    renderFeaturedProducts();
+    renderLatestNews();
+  </script>
+</body>
+</html>
+
+
+

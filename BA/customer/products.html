@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S?n ph?m - LuxRent</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/customer.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/index.html" class="navbar-brand"><img src="/assets/images/logo.png" alt="LuxRent" class="site-logo"></a>
+      <div class="navbar-nav">
+        <a href="/index.html" class="nav-link">Trang ch?</a>
+        <a href="/customer/products.html" class="nav-link active">S?n ph?m</a>
+        <a href="/customer/fitting-booking.html" class="nav-link">Ð?t l?ch th?</a>
+        <a href="/customer/news.html" class="nav-link">Tin t?c</a>
+      </div>
+      <div class="navbar-actions">
+        <a href="/customer/cart.html" class="cart-btn">?? Gi? hàng <span class="cart-badge" style="display:none">0</span></a>
+        <div class="user-menu" id="userMenu">
+          <button class="user-btn" onclick="toggleUserMenu()"><span id="userMenuLabel">?? Ðang nh?p</span> ?</button>
+          <div class="user-dropdown" id="userDropdown" style="display:none">
+            <div id="guestLinks"><a href="/customer/login.html">?? Ðang nh?p</a><a href="/customer/login.html?tab=register">?? Ðang ký</a></div>
+            <div id="authLinks" style="display:none"><a href="/customer/profile.html">?? H? so</a><a href="/customer/orders.html">?? Ðon hàng</a><hr><a href="#" onclick="doLogout()">?? Ðang xu?t</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <h1>B? suu t?p trang ph?c</h1>
+      <p>Khám phá hàng tram m?u trang ph?c cao c?p</p>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="container">
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-row">
+          <div class="filter-group" style="flex:2">
+            <label>Tìm ki?m</label>
+            <input type="text" id="searchInput" placeholder="Tên trang ph?c..." oninput="applyFilters()">
+          </div>
+          <div class="filter-group">
+            <label>Danh m?c</label>
+            <select id="catFilter" onchange="applyFilters()">
+              <option value="">T?t c?</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Size</label>
+            <select id="sizeFilter" onchange="applyFilters()">
+              <option value="">T?t c?</option>
+              <option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Màu s?c</label>
+            <input type="text" id="colorFilter" placeholder="Ð?, Tr?ng..." oninput="applyFilters()">
+          </div>
+          <div class="filter-group" style="flex:0">
+            <label>&nbsp;</label>
+            <button class="btn btn-secondary" onclick="clearFilters()">Xóa l?c</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <p id="resultCount" style="font-size:14px;color:var(--gray-500)"></p>
+      </div>
+
+      <div class="product-grid" id="productGrid">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </section>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/product.js"></script>
+  <script src="../assets/js/cart.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = StorageService.getSession();
+    if (session) { document.getElementById('userMenuLabel').textContent = '?? ' + session.fullName; document.getElementById('guestLinks').style.display = 'none'; document.getElementById('authLinks').style.display = 'block'; CartModule.updateCartBadge(session.userId); }
+    function toggleUserMenu() { const dd = document.getElementById('userDropdown'); dd.style.display = dd.style.display === 'none' ? 'block' : 'none'; }
+    document.addEventListener('click', e => { if (!document.getElementById('userMenu').contains(e.target)) document.getElementById('userDropdown').style.display = 'none'; });
+    function doLogout() { AuthModule.logout(); }
+
+    // Load categories
+    const cats = ProductModule.getCategories();
+    const catSel = document.getElementById('catFilter');
+    cats.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; catSel.appendChild(o); });
+
+    // Check URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('category')) catSel.value = urlParams.get('category');
+
+    function applyFilters() {
+      const filters = {
+        name: document.getElementById('searchInput').value,
+        categoryId: document.getElementById('catFilter').value,
+        size: document.getElementById('sizeFilter').value,
+        color: document.getElementById('colorFilter').value,
+      };
+      renderProducts(ProductModule.getAll(filters));
+    }
+
+    function clearFilters() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('catFilter').value = '';
+      document.getElementById('sizeFilter').value = '';
+      document.getElementById('colorFilter').value = '';
+      applyFilters();
+    }
+
+    function renderProducts(products) {
+      const grid = document.getElementById('productGrid');
+      document.getElementById('resultCount').textContent = `Tìm th?y ${products.length} s?n ph?m`;
+      if (!products.length) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">??</div><div class="empty-state-title">Không tìm th?y s?n ph?m</div><div class="empty-state-desc">Th? thay d?i b? l?c</div></div>';
+        return;
+      }
+      grid.innerHTML = products.map(p => {
+        const cat = cats.find(c => c.id === p.categoryId);
+        return `<div class="product-card">
+          <div class="product-img">
+            <img src="${p.images[0] || 'https://via.placeholder.com/300x400?text=No+Image'}" alt="${p.name}" loading="lazy">
+            <div class="product-img-overlay">
+              <button class="btn btn-sm" style="background:rgba(255,255,255,0.9);color:var(--primary);flex:1" onclick="location.href='/customer/product-detail.html?id=${p.id}'">Xem chi ti?t</button>
+            </div>
+            <div class="product-badge">${cat?.name || ''}</div>
+          </div>
+          <div class="product-info">
+            <div class="product-name">${p.name}</div>
+            <div style="font-size:12px;color:var(--gray-400);margin-bottom:8px">Size: ${p.sizes.join(', ')} | Màu: ${p.colors.join(', ')}</div>
+            <div class="product-price">
+              <span class="product-price-main">${formatCurrency(p.rentalPricePerDay)}</span>
+              <span class="product-price-unit">/ngày</span>
+            </div>
+            <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Ð?t c?c: ${formatCurrency(p.depositAmount)}</div>
+            <div class="product-actions">
+              <button class="btn btn-outline btn-sm" onclick="location.href='/customer/fitting-booking.html?productId=${p.id}'">?? Th?</button>
+              <button class="btn btn-primary btn-sm" onclick="location.href='/customer/product-detail.html?id=${p.id}'">?? Thuê ngay</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    applyFilters();
+  </script>
+</body>
+</html>
+
+
+
