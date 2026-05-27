@@ -79,21 +79,39 @@
       <input type="hidden" id="editId">
       <div class="form-group"><label>Tên phương thức <span class="required-star">*</span></label><input type="text" id="sName" class="form-control" placeholder="VD: Giao hàng nhanh" required></div>
       <div class="form-row">
-        <div class="form-group">
-            <label>Thời gian giao ước tính *</label>
+          <div class="form-group">
+            <label>Thời gian giao ước tính <span class="required-star">*</span></label>
             <input type="text" id="sDeliveryTime" class="form-control" placeholder="VD: 3-5 ngày, 1-2 ngày..." required>
             <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Thời gian ước tính hiển thị cho khách hàng</div>
           </div>
-          <div class="form-group"><label>Trạng thái *</label>
+          <div class="form-group"><label>Trạng thái <span class="required-star">*</span></label>
             <select id="sStatus" class="form-control" required><option value="active">Đang sử dụng</option><option value="tam_ngung">Tạm ngừng</option></select>
           </div>
       </div>
-      <div class="form-group"><label>Khu vực áp dụng (cách nhau bằng dấu phẩy) *</label><input type="text" id="sRegions" class="form-control" placeholder="TP.HCM, Hà Nội, Đà Nẵng" required></div>
+      <div class="form-group"><label>Khu vực áp dụng <span class="required-star">*</span></label>
+        <div id="regionPickerWrap" style="position:relative">
+          <div id="regionTrigger" onclick="toggleRegionPicker()"
+            style="border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#fff;min-height:38px;gap:8px">
+            <span id="regionTriggerLabel" style="color:var(--gray-400);font-size:13px;flex:1">-- Chọn khu vực --</span>
+            <span style="font-size:10px;color:var(--gray-400);flex-shrink:0">▾</span>
+          </div>
+          <div id="regionPickerMenu"
+            style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(0,0,0,0.1);z-index:400;max-height:320px;overflow-y:auto">
+            <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;border-bottom:2px solid var(--gray-200);font-weight:600;background:var(--gray-50)">
+              <input type="checkbox" id="regionAll" onchange="onRegionAllChange()">
+              <span>🌐 Toàn quốc</span>
+            </label>
+            <div id="regionGroups"></div>
+          </div>
+        </div>
+        <input type="hidden" id="sRegions">
+        <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Chọn tỉnh/thành hoặc tích "Toàn quốc"</div>
+      </div>
       <div class="form-group"><label>Mô tả</label><textarea id="sDesc" class="form-control" rows="2"></textarea></div>
       <div id="modalError" class="alert alert-error" style="display:none"></div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
-        <button class="btn btn-primary" onclick="saveShipping()" style="background:var(--admin-primary)">Lưu</button>
+        <button id="saveShippingBtn" class="btn btn-primary" onclick="saveShipping()" style="background:var(--admin-primary)">Lưu</button>
       </div>
     </div>
   </div>
@@ -217,10 +235,15 @@
       document.getElementById('sName').value = '';
       document.getElementById('sDeliveryTime').value = '';
       document.getElementById('sStatus').value = 'active';
-      document.getElementById('sRegions').value = '';
+      // Default to Toàn quốc
+      document.getElementById('sRegions').value = 'Toàn quốc';
       document.getElementById('sDesc').value = '';
       document.getElementById('modalTitle').textContent = 'Thêm phương thức vận chuyển';
       document.getElementById('modalError').style.display = 'none';
+      renderRegionPicker();
+      applyRegionsSelection(['Toàn quốc']);
+      const saveBtn = document.getElementById('saveShippingBtn');
+      if (saveBtn) saveBtn.textContent = 'Lưu';
       document.getElementById('shippingModal').style.display = 'flex';
     }
 
@@ -232,7 +255,11 @@
       document.getElementById('sName').value = m.name;
       document.getElementById('sDeliveryTime').value = m.deliveryTime || '';
       document.getElementById('sStatus').value = m.status;
-      document.getElementById('sRegions').value = (m.regions||[]).join(', ');
+      // Populate region picker from saved regions
+      renderRegionPicker();
+      applyRegionsSelection(m.regions || []);
+      const saveBtn = document.getElementById('saveShippingBtn');
+      if (saveBtn) saveBtn.textContent = 'Cập nhật';
       document.getElementById('sDesc').value = m.description||'';
       document.getElementById('modalTitle').textContent = 'Sửa phương thức vận chuyển';
       document.getElementById('modalError').style.display = 'none';
@@ -241,16 +268,149 @@
 
     function closeModal() { document.getElementById('shippingModal').style.display = 'none'; }
 
+    // Regions data and picker helpers
+    const REGION_GROUPS = [
+      { name: 'Miền Bắc', provinces: ['Hà Nội','Hải Phòng','Quảng Ninh','Bắc Ninh','Bắc Giang','Thái Nguyên','Nam Định','Ninh Bình','Thái Bình','Hà Nam','Hưng Yên','Vĩnh Phúc','Phú Thọ','Lào Cai','Yên Bái','Sơn La','Điện Biên'] },
+      { name: 'Miền Trung', provinces: ['Đà Nẵng','Quảng Nam','Quảng Ngãi','Bình Định','Phú Yên','Khánh Hòa','Ninh Thuận','Bình Thuận','Quảng Bình','Quảng Trị','Thừa Thiên-Huế','Nghệ An','Hà Tĩnh'] },
+      { name: 'Miền Nam', provinces: ['TP.HCM','Cần Thơ','Đồng Nai','Bình Dương','Bà Rịa - Vũng Tàu','Long An','Tiền Giang','Bến Tre','Vĩnh Long','Trà Vinh','An Giang','Kiên Giang','Đồng Tháp','Sóc Trăng','Bạc Liêu','Cà Mau','Tây Ninh','Bình Phước'] }
+    ];
+
+    function renderRegionPicker() {
+      const wrap = document.getElementById('regionGroups');
+      if (!wrap) return;
+      let html = '';
+      REGION_GROUPS.forEach(g => {
+        html += `<div style="padding:8px;border-bottom:1px solid var(--gray-100)">`;
+        html += `<label style="display:flex;align-items:center;gap:8px;font-weight:600"><input type=\"checkbox\" class=\"groupCheckbox\" data-group=\"${g.name}\" onchange=\"onGroupToggle('${g.name}',this)\"> ${g.name}</label>`;
+        html += `<div style=\"padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px\">`;
+        g.provinces.forEach(p => {
+          const safe = p.replace(/"/g, '&quot;');
+          html += `<label style=\"display:flex;align-items:center;gap:8px;padding:4px 0\"><input type=\"checkbox\" class=\"provinceCheckbox\" data-province=\"${safe}\" onchange=\"onProvinceToggle('${safe}',this)\">${p}</label>`;
+        });
+        html += `</div></div>`;
+      });
+      wrap.innerHTML = html;
+      // reset regionAll checkbox if not present
+      const allCb = document.getElementById('regionAll');
+      if (allCb) allCb.checked = false;
+      updateRegionTriggerLabel();
+    }
+
+    function toggleRegionPicker() {
+      const menu = document.getElementById('regionPickerMenu');
+      if (!menu) return;
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+      if (menu.style.display === 'block') {
+        setTimeout(()=>document.addEventListener('click', closeRegionPickerOnOutsideClick));
+      }
+    }
+
+    function closeRegionPickerOnOutsideClick(e) {
+      const menu = document.getElementById('regionPickerMenu');
+      const wrap = document.getElementById('regionPickerWrap');
+      if (!menu || !wrap) return;
+      if (!wrap.contains(e.target)) {
+        menu.style.display = 'none';
+        document.removeEventListener('click', closeRegionPickerOnOutsideClick);
+      }
+    }
+
+    function onRegionAllChange() {
+      const all = document.getElementById('regionAll').checked;
+      const provinces = Array.from(document.querySelectorAll('.provinceCheckbox'));
+      provinces.forEach(cb => { cb.checked = false; });
+      Array.from(document.querySelectorAll('.groupCheckbox')).forEach(g=>g.checked=false);
+      document.getElementById('sRegions').value = all ? 'Toàn quốc' : '';
+      updateRegionTriggerLabel();
+    }
+
+    function onGroupToggle(groupName, el) {
+      const checked = el.checked;
+      const group = REGION_GROUPS.find(g => g.name === groupName);
+      if (!group) return;
+      group.provinces.forEach(p => {
+        const cb = Array.from(document.querySelectorAll('.provinceCheckbox')).find(x => x.dataset.province === p);
+        if (cb) cb.checked = checked;
+      });
+      document.getElementById('regionAll').checked = false;
+      syncHiddenRegions();
+    }
+
+    function onProvinceToggle(province, el) {
+      // uncheck global if any province toggled
+      if (el.checked) document.getElementById('regionAll').checked = false;
+      // update group checkbox state
+      REGION_GROUPS.forEach(g => {
+        if (g.provinces.indexOf(province) !== -1) {
+          const allChecked = g.provinces.every(p => {
+            const cb = Array.from(document.querySelectorAll('.provinceCheckbox')).find(x => x.dataset.province === p);
+            return cb && cb.checked;
+          });
+          const groupCb = Array.from(document.querySelectorAll('.groupCheckbox')).find(x => x.dataset.group === g.name);
+          if (groupCb) groupCb.checked = allChecked;
+        }
+      });
+      syncHiddenRegions();
+    }
+
+    function syncHiddenRegions() {
+      const all = document.getElementById('regionAll').checked;
+      if (all) {
+        document.getElementById('sRegions').value = 'Toàn quốc';
+        updateRegionTriggerLabel();
+        return;
+      }
+      const selected = Array.from(document.querySelectorAll('.provinceCheckbox')).filter(cb=>cb.checked).map(cb=>cb.dataset.province);
+      document.getElementById('sRegions').value = selected.join(', ');
+      updateRegionTriggerLabel();
+    }
+
+    function applyRegionsSelection(regions) {
+      // regions: array like ['Toàn quốc'] or ['TP.HCM','Hà Nội']
+      renderRegionPicker();
+      if (!regions || !regions.length) return;
+      const allCb = document.getElementById('regionAll');
+      if (regions.length === 1 && regions[0] === 'Toàn quốc') {
+        if (allCb) allCb.checked = true;
+        Array.from(document.querySelectorAll('.provinceCheckbox')).forEach(c=>c.checked=false);
+        Array.from(document.querySelectorAll('.groupCheckbox')).forEach(c=>c.checked=false);
+        document.getElementById('sRegions').value = 'Toàn quốc';
+        updateRegionTriggerLabel();
+        return;
+      }
+      // otherwise check listed provinces
+      Array.from(document.querySelectorAll('.provinceCheckbox')).forEach(cb => {
+        cb.checked = regions.indexOf(cb.dataset.province) !== -1;
+      });
+      // update group checkboxes
+      REGION_GROUPS.forEach(g => {
+        const groupCb = Array.from(document.querySelectorAll('.groupCheckbox')).find(x => x.dataset.group === g.name);
+        if (groupCb) groupCb.checked = g.provinces.every(p => regions.indexOf(p) !== -1);
+      });
+      document.getElementById('sRegions').value = regions.join(', ');
+      updateRegionTriggerLabel();
+    }
+
+    function updateRegionTriggerLabel() {
+      const label = document.getElementById('regionTriggerLabel');
+      const all = document.getElementById('regionAll') && document.getElementById('regionAll').checked;
+      if (all) { label.textContent = '🌐 Toàn quốc'; return; }
+      const selected = Array.from(document.querySelectorAll('.provinceCheckbox')).filter(cb=>cb.checked).map(cb=>cb.dataset.province);
+      if (!selected.length) { label.textContent = '-- Chọn khu vực --'; return; }
+      if (selected.length <= 3) label.textContent = selected.join(', ');
+      else label.textContent = selected.slice(0,3).join(', ') + '...';
+    }
+
     function saveShipping() {
       const errEl = document.getElementById('modalError');
       const id = document.getElementById('editId').value;
       const name = document.getElementById('sName').value.trim();
-      if (!name) { errEl.textContent = 'Vui lòng nhập tên phương thức'; errEl.style.display = 'flex'; return; }
+      if (!name) { errEl.textContent = 'Vui lòng điền đầy đủ thông tin'; errEl.style.display = 'flex'; return; }
       const delivery = document.getElementById('sDeliveryTime').value.trim();
-      if (!delivery) { errEl.textContent = 'Vui lòng nhập thời gian giao ước tính'; errEl.style.display = 'flex'; return; }
+      if (!delivery) { errEl.textContent = 'Vui lòng điền đầy đủ thông tin'; errEl.style.display = 'flex'; return; }
       const regions = document.getElementById('sRegions').value.split(',').map(s=>s.trim()).filter(Boolean);
-      if (!regions.length) { errEl.textContent = 'Vui lòng nhập ít nhất một khu vực áp dụng'; errEl.style.display = 'flex'; return; }
-      if (!document.getElementById('sStatus').value) { errEl.textContent = 'Vui lòng chọn trạng thái'; errEl.style.display = 'flex'; return; }
+      if (!regions.length) { errEl.textContent = 'Vui lòng điền đầy đủ thông tin'; errEl.style.display = 'flex'; return; }
+      if (!document.getElementById('sStatus').value) { errEl.textContent = 'Vui lòng điền đầy đủ thông tin'; errEl.style.display = 'flex'; return; }
       const data = {
         name,
         deliveryTime: delivery,

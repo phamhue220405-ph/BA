@@ -85,11 +85,11 @@ function renderAdminSidebar(activeId, session) {
 
   return '<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>'
     + '<aside class="admin-sidebar" id="adminSidebar">'
-    +   '<button class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="toggleCollapse()" title="Thu/mở sidebar">‹</button>'
     +   '<div class="sidebar-header">'
     +     '<div class="sidebar-brand">'
-    +       '<img src="/assets/images/logo.png" alt="Diệu Linh" class="site-logo site-logo-small">'
+    +       '<img src="/assets/images/logo.png" alt="Diệu Linh" class="site-logo site-logo-small sidebar-brand-logo">'
     +     '</div>'
+    +     '<button class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="toggleCollapse()" title="Thu/mở sidebar">‹</button>'
     +   '</div>'
     +   '<a href="/admin/profile.html" class="sidebar-user">'
     +     '<div style="display:flex;align-items:center;gap:10px">'
@@ -110,7 +110,8 @@ function renderAdminSidebar(activeId, session) {
 function sidebarLink(id, icon, label, href, activeId) {
   var cls = 'sidebar-link' + (id === activeId ? ' active' : '');
   return '<a href="' + href + '" class="' + cls + '" data-label="' + label + '">'
-    + '<span class="sidebar-link-icon">' + icon + '</span>' + label
+    + '<span class="sidebar-link-icon">' + icon + '</span>'
+    + '<span class="sidebar-link-text">' + label + '</span>'
     + '</a>';
 }
 
@@ -124,14 +125,15 @@ function sidebarGroup(groupId, icon, label, isOpen, children, activeId) {
   children.forEach(function(c) {
     var cls = 'sidebar-link sidebar-child-link' + (c.id === activeId ? ' active' : '');
     childrenHtml += '<a href="' + c.href + '" class="' + cls + '" data-label="' + c.label + '">'
-      + '<span class="sidebar-link-icon">' + c.icon + '</span>' + c.label
+      + '<span class="sidebar-link-icon">' + c.icon + '</span>'
+      + '<span class="sidebar-link-text">' + c.label + '</span>'
       + '</a>';
   });
 
   return '<div class="sidebar-group">'
     + '<button class="' + btnCls + '" onclick="toggleGroup(\'' + groupId + '\')" data-label="' + label + '">'
     +   '<span class="sidebar-link-icon">' + icon + '</span>'
-    +   '<span style="flex:1">' + label + '</span>'
+    +   '<span class="sidebar-link-text" style="flex:1">' + label + '</span>'
     +   '<span class="sidebar-group-arrow" id="arrow-' + groupId + '">' + arrow + '</span>'
     + '</button>'
     + '<div class="sidebar-group-children" id="group-' + groupId + '" style="display:' + display + '">'

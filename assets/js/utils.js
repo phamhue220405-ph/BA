@@ -103,8 +103,8 @@ function showConfirm(message, onConfirm) {
     <div style="background:#fff;border-radius:12px;padding:24px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
       <p style="margin:0 0 20px;font-size:16px;color:#374151;">${message}</p>
       <div style="display:flex;gap:12px;justify-content:flex-end;">
-        <button id="confirm-cancel" style="padding:8px 20px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;font-size:14px;">Hủy</button>
-        <button id="confirm-ok" style="padding:8px 20px;border:none;border-radius:6px;background:#ef4444;color:#fff;cursor:pointer;font-size:14px;">Xác nhận</button>
+        <button id="confirm-cancel" style="padding:8px 20px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;font-size:14px;">Quay lại</button>
+        <button id="confirm-ok" style="padding:8px 20px;border:none;border-radius:6px;background:#ef4444;color:#fff;cursor:pointer;font-size:14px;">Đồng ý</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -118,7 +118,7 @@ function showSuccess(message, onOk) {
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = `
     <div style="background:#fff;border-radius:12px;padding:28px 24px;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">
-      <div style="font-size:48px;margin-bottom:12px">✅</div>
+      <div style="font-size:32px;margin-bottom:8px">✅</div>
       <p style="margin:0 0 24px;font-size:16px;color:#374151;font-weight:500;">${message}</p>
       <button id="success-ok" style="padding:10px 32px;border:none;border-radius:6px;background:#22c55e;color:#fff;cursor:pointer;font-size:15px;font-weight:600;">OK</button>
     </div>`;

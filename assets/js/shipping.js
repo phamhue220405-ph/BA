@@ -18,6 +18,9 @@ const ShippingModule = {
   create(data) {
     const { name, regions, costs, status, description } = data;
     if (!name) return { error: 'Thiếu tên phương thức vận chuyển' };
+    // Prevent duplicate by name (case-insensitive)
+    const existing = StorageService.getAll('crb_shipping_methods').filter(m => !m.deleted).find(m => m.name.toLowerCase() === name.toLowerCase());
+    if (existing) return { error: 'Phương thức vận chuyển đã tồn tại' };
     const method = StorageService.save('crb_shipping_methods', {
       name,
       regions: regions || [], costs: costs || [],
@@ -28,6 +31,12 @@ const ShippingModule = {
   },
 
   update(id, changes) {
+    // If name is changing, ensure no other method uses the same name
+    if (changes.name) {
+      const name = changes.name;
+      const others = StorageService.getAll('crb_shipping_methods').filter(m => !m.deleted && m.id !== id);
+      if (others.find(m => m.name.toLowerCase() === name.toLowerCase())) return { error: 'Phương thức vận chuyển đã tồn tại' };
+    }
     StorageService.update('crb_shipping_methods', id, changes);
     return { success: true };
   },
