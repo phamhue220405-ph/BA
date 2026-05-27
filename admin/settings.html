@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cài đặt - LuxRent Admin</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <main class="admin-main">
+      <div class="admin-topbar"><div class="topbar-title">⚙️ Cài đặt hệ thống</div></div>
+      <div class="admin-content">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+          <!-- Loyalty Points Config -->
+          <div class="admin-form-card">
+            <h3>💎 Cấu hình điểm tích lũy</h3>
+            <div class="form-group">
+              <label>Tỷ lệ quy đổi (đ/điểm)</label>
+              <input type="number" id="loyaltyRate" class="form-control" min="1000" step="1000">
+              <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Ví dụ: 10000 = cứ 10.000đ được 1 điểm</div>
+            </div>
+            <div class="form-group">
+              <label>Giới hạn đổi điểm tối đa (%)</label>
+              <input type="number" id="loyaltyMaxPct" class="form-control" min="1" max="100">
+              <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Tối đa % giá trị đơn hàng được giảm bằng điểm</div>
+            </div>
+            <button class="btn btn-primary" onclick="saveLoyaltyConfig()" style="background:var(--admin-primary)">💾 Lưu cấu hình</button>
+          </div>
+
+          <!-- Low Stock Threshold -->
+          <div class="admin-form-card">
+            <h3>📦 Cấu hình cảnh báo tồn kho</h3>
+            <div class="form-group">
+              <label>Ngưỡng cảnh báo tồn kho thấp</label>
+              <input type="number" id="stockThreshold" class="form-control" min="1">
+              <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Cảnh báo khi tồn kho dưới mức này</div>
+            </div>
+            <button class="btn btn-primary" onclick="saveStockConfig()" style="background:var(--admin-primary)">💾 Lưu cấu hình</button>
+          </div>
+
+          <!-- System Info -->
+          <div class="admin-form-card">
+            <h3>ℹ️ Thông tin hệ thống</h3>
+            <div style="font-size:14px;display:grid;gap:10px">
+              <div style="display:flex;justify-content:space-between"><span>Tổng người dùng:</span><span id="totalUsers" style="font-weight:600">-</span></div>
+              <div style="display:flex;justify-content:space-between"><span>Tổng sản phẩm:</span><span id="totalProducts" style="font-weight:600">-</span></div>
+              <div style="display:flex;justify-content:space-between"><span>Tổng đơn hàng:</span><span id="totalOrders" style="font-weight:600">-</span></div>
+              <div style="display:flex;justify-content:space-between"><span>Tổng lịch thử:</span><span id="totalFittings" style="font-weight:600">-</span></div>
+            </div>
+          </div>
+
+          <!-- Reset Data -->
+          <div class="admin-form-card">
+            <h3>🔄 Quản lý dữ liệu</h3>
+            <p style="font-size:14px;color:var(--gray-500);margin-bottom:16px">Xóa dữ liệu demo và khởi tạo lại từ đầu</p>
+            <button class="btn btn-danger" onclick="resetData()">⚠️ Xóa & Khởi tạo lại dữ liệu</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/admin-common.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAdminAuth(['admin']);
+    if (session) document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('settings', session);
+
+    function loadConfig() {
+      const loyaltyConfig = StorageService.getRaw('crb_loyalty_config') || { rate: 10000, maxPct: 20 };
+      const threshold = StorageService.getRaw('crb_low_stock_threshold') || 3;
+      document.getElementById('loyaltyRate').value = loyaltyConfig.rate;
+      document.getElementById('loyaltyMaxPct').value = loyaltyConfig.maxPct;
+      document.getElementById('stockThreshold').value = threshold;
+
+      document.getElementById('totalUsers').textContent = StorageService.getAll('crb_users').filter(u => !u.deleted).length;
+      document.getElementById('totalProducts').textContent = StorageService.getAll('crb_products').filter(p => !p.isArchived && !p.deleted).length;
+      document.getElementById('totalOrders').textContent = StorageService.getAll('crb_rental_orders').length;
+      document.getElementById('totalFittings').textContent = StorageService.getAll('crb_fitting_bookings').length;
+    }
+
+    function saveLoyaltyConfig() {
+      const rate = parseInt(document.getElementById('loyaltyRate').value);
+      const maxPct = parseInt(document.getElementById('loyaltyMaxPct').value);
+      if (!rate || !maxPct || maxPct > 100) { Toast.show('Giá trị không hợp lệ', 'error'); return; }
+      StorageService.setRaw('crb_loyalty_config', { rate, maxPct });
+      Toast.show('Đã lưu cấu hình điểm tích lũy', 'success');
+    }
+
+    function saveStockConfig() {
+      const threshold = parseInt(document.getElementById('stockThreshold').value);
+      if (!threshold || threshold < 1) { Toast.show('Ngưỡng phải lớn hơn 0', 'error'); return; }
+      StorageService.setRaw('crb_low_stock_threshold', threshold);
+      Toast.show('Đã lưu cấu hình tồn kho', 'success');
+    }
+
+    function resetData() {
+      showConfirm('⚠️ Xóa toàn bộ dữ liệu và khởi tạo lại? Hành động này không thể hoàn tác!', () => {
+        const keys = ['crb_users','crb_products','crb_categories','crb_cart','crb_rental_orders','crb_fitting_bookings','crb_inventory','crb_shipping_methods','crb_promotions','crb_posts','crb_audit_log','crb_session','crb_seeded'];
+        keys.forEach(k => localStorage.removeItem(k));
+        Toast.show('Đã xóa dữ liệu. Đang tải lại...', 'info');
+        setTimeout(() => window.location.reload(), 1500);
+      });
+    }
+
+    loadConfig();
+  </script>
+</body>
+</html>
+
+

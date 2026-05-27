@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi tiết tin - LuxRent</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/customer.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/index.html" class="navbar-brand"><img src="/assets/images/logo.png" alt="LuxRent" class="site-logo"></a>
+      <div class="navbar-nav">
+      <a href="/index.html" class="nav-link">Trang chủ</a>
+      <a href="/customer/products.html" class="nav-link">Sản phẩm</a>
+      <a href="/customer/fitting-booking.html" class="nav-link">Đặt lịch thử</a>
+      <a href="/customer/news.html" class="nav-link">Tin tức</a>
+      </div>
+      <div class="navbar-actions">
+        <a href="/customer/cart.html" class="cart-btn">🛒 Giỏ hàng <span class="cart-badge" style="display:none">0</span></a>
+        <div class="user-menu" id="userMenu">
+          <button class="user-btn" onclick="toggleUserMenu()"><span id="userMenuLabel">Đăng nhập</span> ▾</button>
+          <div class="user-dropdown" id="userDropdown" style="display:none">
+            <div id="guestLinks"><a href="/customer/login.html">Đăng nhập</a></div>
+            <div id="authLinks" style="display:none"><a href="/customer/profile.html">Hồ sơ</a><a href="/customer/orders.html">Đơn hàng</a><hr><a href="#" onclick="doLogout()">Đăng xuất</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header"><div class="container"><h1 id="postTitle">Tin tức</h1><p id="postDate"></p></div></div>
+
+  <section class="section">
+    <div class="container">
+      <div id="postContent" style="max-width:900px;margin:0 auto;font-size:15px;line-height:1.8;color:var(--gray-700)"></div>
+    </div>
+  </section>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/cart.js"></script>
+  <script src="../assets/js/promotion.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = StorageService.getSession();
+    if (session) { document.getElementById('userMenuLabel').textContent = '👤 ' + session.fullName; document.getElementById('guestLinks').style.display = 'none'; document.getElementById('authLinks').style.display = 'block'; CartModule.updateCartBadge(session.userId); }
+    function toggleUserMenu() { const dd = document.getElementById('userDropdown'); dd.style.display = dd.style.display === 'none' ? 'block' : 'none'; }
+    document.addEventListener('click', e => { if (!document.getElementById('userMenu').contains(e.target)) document.getElementById('userDropdown').style.display = 'none'; });
+    function doLogout() { AuthModule.logout(); }
+
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const posts = PromotionModule.getAllPosts(true);
+    const post = posts.find(p => p.id === id);
+    if (!post) {
+      document.getElementById('postContent').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Không tìm thấy bài viết</div></div>';
+      document.getElementById('postTitle').textContent = 'Không tìm thấy';
+    } else {
+      document.getElementById('postTitle').textContent = post.title;
+      document.getElementById('postDate').textContent = formatDate(post.createdAt);
+      const imgHtml = post.images && post.images[0] ? `<img src="${post.images[0]}" alt="${post.title}" style="width:100%;border-radius:var(--radius);margin-bottom:16px">` : '';
+      document.getElementById('postContent').innerHTML = imgHtml + post.content;
+    }
+  </script>
+</body>
+</html>

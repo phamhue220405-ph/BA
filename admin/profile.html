@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hồ sơ cá nhân - LuxRent Admin</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div class="topbar-title">👤 Thông tin cá nhân</div>
+      </div>
+      <div class="admin-content">
+        <div class="admin-form-card">
+          <h3>Hồ sơ của bạn</h3>
+          <div class="form-row">
+            <div class="form-group"><label>Họ và tên</label><input type="text" id="fullName" class="form-control"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="email" class="form-control" readonly style="background:var(--gray-50)"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Vai trò</label><input type="text" id="roleLabel" class="form-control" readonly style="background:var(--gray-50)"></div>
+            <div class="form-group"><label>Số điện thoại</label><input type="tel" id="phone" class="form-control"></div>
+          </div>
+          <div class="form-group"><label>Địa chỉ</label><input type="text" id="address" class="form-control"></div>
+          <button class="btn btn-primary" onclick="saveProfile()" style="background:var(--admin-primary)">Lưu thay đổi</button>
+        </div>
+
+        <div class="admin-form-card">
+          <h3>Đổi mật khẩu</h3>
+          <div class="form-group"><label>Mật khẩu hiện tại</label><input type="password" id="currentPwd" class="form-control"></div>
+          <div class="form-group"><label>Mật khẩu mới</label><input type="password" id="newPwd" class="form-control" placeholder="Tối thiểu 8 ký tự"></div>
+          <div class="form-group"><label>Xác nhận mật khẩu mới</label><input type="password" id="confirmPwd" class="form-control"></div>
+          <button class="btn btn-primary" onclick="changePassword()" style="background:var(--admin-primary)">Cập nhật mật khẩu</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/admin-common.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAdminAuth();
+    if (session) {
+      document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('profile', session);
+
+      const roleLabels = {
+        admin: 'Quản trị viên', manager: 'Quản lý', accountant: 'Kế toán',
+        warehouse: 'Nhân viên kho', sales: 'Nhân viên bán hàng', marketing: 'Marketing'
+      };
+
+      function loadProfile() {
+        const user = StorageService.getById('crb_users', session.userId);
+        if (!user) {
+          Toast.show('Không tìm thấy thông tin tài khoản', 'error');
+          return;
+        }
+        document.getElementById('fullName').value = user.fullName || '';
+        document.getElementById('email').value = user.email || '';
+        document.getElementById('phone').value = user.phone || '';
+        document.getElementById('address').value = user.address || '';
+        document.getElementById('roleLabel').value = roleLabels[user.role] || user.role;
+      }
+
+      window.saveProfile = function() {
+        const result = AuthModule.updateProfile(session.userId, {
+          fullName: document.getElementById('fullName').value.trim(),
+          phone: document.getElementById('phone').value.trim(),
+          address: document.getElementById('address').value.trim(),
+        });
+        if (result.error) { Toast.show(result.error, 'error'); return; }
+        Toast.show('Cập nhật thông tin cá nhân thành công!', 'success');
+        loadProfile();
+      };
+
+      window.changePassword = function() {
+        const current = document.getElementById('currentPwd').value;
+        const newPwd = document.getElementById('newPwd').value;
+        const confirm = document.getElementById('confirmPwd').value;
+        if (newPwd !== confirm) { Toast.show('Mật khẩu xác nhận không khớp', 'error'); return; }
+        const result = AuthModule.changePassword(session.userId, current, newPwd);
+        if (result.error) { Toast.show(result.error, 'error'); return; }
+        Toast.show('Đổi mật khẩu thành công!', 'success');
+        document.getElementById('currentPwd').value = '';
+        document.getElementById('newPwd').value = '';
+        document.getElementById('confirmPwd').value = '';
+      };
+
+      loadProfile();
+    }
+  </script>
+</body>
+</html>

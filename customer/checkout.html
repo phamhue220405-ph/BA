@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thanh to�n - LuxRent</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/customer.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/index.html" class="navbar-brand"><img src="/assets/images/logo.png" alt="LuxRent" class="site-logo"></a>
+      <div class="navbar-actions">
+      <a href="/customer/cart.html" class="cart-btn">🛒 Giỏ hàng <span class="cart-badge" style="display:none">0</span></a>
+        <div class="user-menu" id="userMenu">
+          <button class="user-btn" onclick="toggleUserMenu()"><span id="userMenuLabel">??</span> ?</button>
+          <div class="user-dropdown" id="userDropdown" style="display:none">
+            <div id="authLinks"><a href="/customer/profile.html">?? H? so</a><a href="/customer/orders.html">?? �on h�ng</a><hr><a href="#" onclick="doLogout()">?? �ang xu?t</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header"><div class="container"><h1>Thanh toán đơn thuê</h1></div></div>
+
+  <section class="section">
+    <div class="container">
+      <div id="checkoutContent"></div>
+    </div>
+  </section>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/product.js"></script>
+  <script src="../assets/js/cart.js"></script>
+  <script src="../assets/js/order.js"></script>
+  <script src="../assets/js/payment.js"></script>
+  <script src="../assets/js/shipping.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAuth('/customer/login.html?redirect=/customer/checkout.html');
+    if (session) { document.getElementById('userMenuLabel').textContent = '?? ' + session.fullName; CartModule.updateCartBadge(session.userId); }
+    function toggleUserMenu() { const dd = document.getElementById('userDropdown'); dd.style.display = dd.style.display === 'none' ? 'block' : 'none'; }
+    document.addEventListener('click', e => { if (!document.getElementById('userMenu').contains(e.target)) document.getElementById('userDropdown').style.display = 'none'; });
+    function doLogout() { AuthModule.logout(); }
+
+    let selectedPayment = '', selectedShipping = '', currentOrderId = null, discountAmount = 0;
+
+    function renderCheckout() {
+      if (!session) return;
+      const items = CartModule.getCart(session.userId);
+      if (!items.length) { window.location.href = '/customer/cart.html'; return; }
+      const totals = CartModule.getTotal(session.userId);
+      const shippingMethods = ShippingModule.getActive();
+      const user = StorageService.getById('crb_users', session.userId);
+
+      document.getElementById('checkoutContent').innerHTML = `
+        <div class="checkout-layout">
+          <div>
+            <!-- Delivery Info -->
+            <div class="checkout-section">
+              <h3>?? Th�ng tin giao h�ng</h3>
+              <div class="form-row">
+                <div class="form-group"><label>Ngu?i nh?n *</label><input type="text" id="recipientName" class="form-control" value="${user?.fullName || ''}"></div>
+                <div class="form-group"><label>S? di?n tho?i *</label><input type="text" id="recipientPhone" class="form-control" value="${user?.phone || ''}"></div>
+              </div>
+              <div class="form-group"><label>�?a ch? giao h�ng *</label><input type="text" id="deliveryAddress" class="form-control" value="${user?.address || ''}" placeholder="S? nh�, du?ng, phu?ng, qu?n, t?nh/th�nh"></div>
+              <div class="form-group"><label>Ng�y giao h�ng mong mu?n</label><input type="date" id="deliveryDate" class="form-control" min="${new Date(Date.now()+86400000).toISOString().slice(0,10)}"></div>
+            </div>
+
+            <!-- Shipping -->
+            <div class="checkout-section">
+              <h3>?? Phuong th?c v?n chuy?n</h3>
+              ${shippingMethods.length ? shippingMethods.map(m => `
+                <label style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--gray-200);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:8px;transition:border-color 0.2s" onclick="selectShipping('${m.id}',this)">
+                  <input type="radio" name="shipping" value="${m.id}" style="display:none">
+                  <div style="flex:1"><div style="font-weight:600">${m.name}</div><div style="font-size:13px;color:var(--gray-500)">D? ki?n ${m.estimatedDays} ng�y</div></div>
+                  <div style="font-weight:700;color:var(--primary)">${m.costs[0] ? formatCurrency(m.costs[0].cost) : 'Mi?n ph�'}</div>
+                </label>`).join('') : '<p style="color:var(--gray-400)">Kh�ng c� phuong th?c v?n chuy?n</p>'}
+            </div>
+
+            <!-- Payment -->
+            <div class="checkout-section">
+              <h3>?? Phuong th?c thanh to�n</h3>
+              <div class="payment-methods">
+                <div class="payment-method" onclick="selectPayment('e_wallet',this)">
+                  <div class="payment-method-icon">??</div>
+                  <div class="payment-method-name">V� di?n t?</div>
+                </div>
+                <div class="payment-method" onclick="selectPayment('card',this)">
+                  <div class="payment-method-icon">??</div>
+                  <div class="payment-method-name">Th? ng�n h�ng</div>
+                </div>
+                <div class="payment-method" onclick="selectPayment('bank_transfer',this)">
+                  <div class="payment-method-icon">??</div>
+                  <div class="payment-method-name">Chuy?n kho?n</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bank Account for Refund -->
+            <div class="checkout-section">
+              <h3>?? T�i kho?n nh?n ho�n c?c</h3>
+              <div class="form-row">
+                <div class="form-group"><label>T�n ng�n h�ng</label><input type="text" id="bankName" class="form-control" value="${user?.bankAccount?.bankName || ''}" placeholder="Vietcombank, Techcombank..."></div>
+                <div class="form-group"><label>S? t�i kho?n</label><input type="text" id="bankAccount" class="form-control" value="${user?.bankAccount?.accountNumber || ''}" placeholder="1234567890"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Summary -->
+          <div>
+            <div class="cart-summary card" style="padding:24px;position:sticky;top:90px">
+              <h3 style="font-size:18px;font-weight:700;margin-bottom:16px">�on h�ng c?a b?n</h3>
+              ${items.map(i => `<div style="display:flex;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--gray-100)">
+                <img src="${i.productImage || 'https://via.placeholder.com/60x80'}" style="width:50px;height:65px;object-fit:cover;border-radius:6px">
+                <div style="flex:1;font-size:13px">
+                  <div style="font-weight:600">${i.productName}</div>
+                  <div style="color:var(--gray-400)">${i.size} | ${i.color}</div>
+                  <div style="color:var(--gray-400)">${formatDate(i.rentalStartDate)} - ${formatDate(i.rentalEndDate)}</div>
+                  <div style="color:var(--primary);font-weight:600">${formatCurrency(i.subtotal)}</div>
+                </div>
+              </div>`).join('')}
+
+              <div class="cart-summary-row"><span>Ti?n thu�</span><span>${formatCurrency(totals.rentalTotal)}</span></div>
+              <div class="cart-summary-row deposit"><span>?? Ti?n c?c</span><span>${formatCurrency(totals.depositTotal)}</span></div>
+              <div class="cart-summary-row" id="shippingRow" style="display:none"><span>Ph� v?n chuy?n</span><span id="shippingCostDisplay">0d</span></div>
+              <div class="cart-summary-row" id="discountRow" style="display:none;color:var(--success)"><span>?? Gi?m gi�</span><span id="discountDisplay">-0d</span></div>
+
+              <!-- Promo Code -->
+              <div style="margin:12px 0">
+                <div class="promo-input-group">
+                  <input type="text" id="promoCode" class="form-control" placeholder="M� gi?m gi�" style="font-size:13px">
+                  <button class="btn btn-secondary btn-sm" onclick="applyPromo()">�p d?ng</button>
+                </div>
+              </div>
+
+              <div class="cart-summary-row total" id="totalDisplay"><span>T?ng c?ng</span><span>${formatCurrency(totals.total)}</span></div>
+              <div style="font-size:11px;color:var(--gray-400);margin-bottom:16px">* C?c ho�n tr? sau khi tr? d? d�ng h?n</div>
+
+              <div id="checkoutError" class="alert alert-error" style="display:none"></div>
+              <button class="btn btn-primary btn-full btn-lg" onclick="placeOrder()">?? Thanh to�n ngay</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function selectPayment(method, el) {
+      selectedPayment = method;
+      document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    function selectShipping(id, el) {
+      selectedShipping = id;
+      document.querySelectorAll('label[onclick^="selectShipping"]').forEach(l => l.style.borderColor = 'var(--gray-200)');
+      el.style.borderColor = 'var(--primary)';
+      const method = ShippingModule.getById(id);
+      const cost = method?.costs[0]?.cost || 0;
+      document.getElementById('shippingRow').style.display = 'flex';
+      document.getElementById('shippingCostDisplay').textContent = formatCurrency(cost);
+      updateTotal();
+    }
+
+    function applyPromo() {
+      const code = document.getElementById('promoCode').value.trim();
+      if (!code) return;
+      const items = CartModule.getCart(session.userId);
+      const totals = CartModule.getTotal(session.userId);
+      const promos = StorageService.getAll('crb_promotions');
+      const now = new Date();
+      const promo = promos.find(p => p.code === code.toUpperCase() && p.isActive && new Date(p.startDate) <= now && new Date(p.endDate) >= now);
+      if (!promo) { Toast.show('M� gi?m gi� kh�ng h?p l? ho?c d� h?t h?n', 'error'); return; }
+      if (totals.rentalTotal < promo.minOrderValue) { Toast.show(`�on h�ng t?i thi?u ${formatCurrency(promo.minOrderValue)}`, 'warning'); return; }
+      discountAmount = promo.discountType === 'percentage' ? Math.floor(totals.rentalTotal * promo.discountValue / 100) : promo.discountValue;
+      document.getElementById('discountRow').style.display = 'flex';
+      document.getElementById('discountDisplay').textContent = '-' + formatCurrency(discountAmount);
+      Toast.show(`�p d?ng m� th�nh c�ng! Gi?m ${formatCurrency(discountAmount)}`, 'success');
+      updateTotal();
+    }
+
+    function updateTotal() {
+      const items = CartModule.getCart(session.userId);
+      const totals = CartModule.getTotal(session.userId);
+      const shippingCost = selectedShipping ? (ShippingModule.getById(selectedShipping)?.costs[0]?.cost || 0) : 0;
+      const total = totals.total + shippingCost - discountAmount;
+      document.getElementById('totalDisplay').innerHTML = `<span>T?ng c?ng</span><span>${formatCurrency(total)}</span>`;
+    }
+
+    function placeOrder() {
+      const errEl = document.getElementById('checkoutError');
+      errEl.style.display = 'none';
+      const recipientName = document.getElementById('recipientName').value.trim();
+      const recipientPhone = document.getElementById('recipientPhone').value.trim();
+      const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
+      if (!recipientName || !recipientPhone || !deliveryAddress) { errEl.textContent = 'Vui l�ng di?n d?y d? th�ng tin giao h�ng'; errEl.style.display = 'flex'; return; }
+      if (!selectedPayment) { errEl.textContent = 'Vui l�ng ch?n phuong th?c thanh to�n'; errEl.style.display = 'flex'; return; }
+
+      const items = CartModule.getCart(session.userId);
+      const shippingCost = selectedShipping ? (ShippingModule.getById(selectedShipping)?.costs[0]?.cost || 0) : 0;
+      const deliveryInfo = { recipientName, phone: recipientPhone, address: deliveryAddress, preferredDeliveryDate: document.getElementById('deliveryDate').value };
+
+      // Save bank account
+      const bankName = document.getElementById('bankName').value.trim();
+      const bankAccount = document.getElementById('bankAccount').value.trim();
+      if (bankName && bankAccount) PaymentModule.registerBankAccount(session.userId, { bankName, accountNumber: bankAccount });
+
+      const orderResult = OrderModule.createRentalOrder(session.userId, items, deliveryInfo, selectedShipping, shippingCost);
+      if (orderResult.error) { errEl.textContent = orderResult.error; errEl.style.display = 'flex'; return; }
+
+      // Apply discount
+      if (discountAmount > 0) {
+        const promoCode = document.getElementById('promoCode').value.trim();
+        StorageService.update('crb_rental_orders', orderResult.order.id, { discountAmount, promotionCode: promoCode, totalAmount: orderResult.order.totalAmount - discountAmount });
+      }
+
+      // Process payment
+      PaymentModule.processPayment(orderResult.order.id, selectedPayment, orderResult.order.totalAmount);
+      CartModule.clearCart(session.userId);
+
+      // Redirect to success
+      window.location.href = '/customer/orders.html?newOrder=' + orderResult.order.id;
+    }
+
+    renderCheckout();
+
+    // If shipping methods are changed in another tab, re-render checkout so new costs show
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'crb_shipping_methods') {
+        renderCheckout();
+      }
+    });
+  </script>
+</body>
+</html>
+
+
+

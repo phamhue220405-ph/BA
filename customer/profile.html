@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>H? so c� nh�n - LuxRent</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/customer.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/index.html" class="navbar-brand"><img src="/assets/images/logo.png" alt="LuxRent" class="site-logo"></a>
+      <div class="navbar-nav">
+      <a href="/index.html" class="nav-link">Trang chủ</a>
+      <a href="/customer/products.html" class="nav-link">Sản phẩm</a>
+      <a href="/customer/orders.html" class="nav-link">Đơn hàng</a>
+      </div>
+      <div class="navbar-actions">
+        <a href="/customer/cart.html" class="cart-btn">?? <span class="cart-badge" style="display:none">0</span></a>
+        <div class="user-menu" id="userMenu">
+          <button class="user-btn" onclick="toggleUserMenu()"><span id="userMenuLabel">??</span> ?</button>
+          <div class="user-dropdown" id="userDropdown" style="display:none">
+            <div id="authLinks"><a href="/customer/profile.html">?? H? so</a><a href="/customer/orders.html">?? �on h�ng</a><hr><a href="#" onclick="doLogout()">?? �ang xu?t</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header"><div class="container"><h1>Hồ sơ cá nhân</h1></div></div>
+
+  <section class="section">
+    <div class="container">
+      <div class="profile-layout">
+        <div class="profile-sidebar">
+          <div class="profile-avatar" id="avatarDisplay">??</div>
+          <div class="profile-name" id="profileName">-</div>
+          <div class="profile-email" id="profileEmail">-</div>
+          <div class="loyalty-card">
+            <div class="loyalty-label">�i?m t�ch luy</div>
+            <div class="loyalty-points" id="loyaltyPoints">0</div>
+            <div class="loyalty-label">di?m</div>
+          </div>
+          <nav class="profile-nav" style="margin-top:16px">
+            <a href="#info" class="active" onclick="showTab('info',this)">?? Th�ng tin c� nh�n</a>
+            <a href="#password" onclick="showTab('password',this)">?? �?i m?t kh?u</a>
+            <a href="#bank" onclick="showTab('bank',this)">?? T�i kho?n ng�n h�ng</a>
+            <a href="/customer/orders.html">?? �on h�ng c?a t�i</a>
+          </nav>
+        </div>
+
+        <div>
+          <!-- Info Tab -->
+          <div id="tab-info" class="card" style="padding:28px">
+            <h3 style="font-size:18px;font-weight:700;margin-bottom:20px">Th�ng tin c� nh�n</h3>
+            <div class="form-group"><label>H? v� t�n *</label><input type="text" id="fullName" class="form-control"></div>
+            <div class="form-row">
+              <div class="form-group"><label>Email</label><input type="email" id="email" class="form-control" readonly style="background:var(--gray-50)"></div>
+              <div class="form-group"><label>S? di?n tho?i</label><input type="tel" id="phone" class="form-control"></div>
+            </div>
+            <div class="form-group"><label>�?a ch?</label><input type="text" id="address" class="form-control"></div>
+            <button class="btn btn-primary" onclick="saveProfile()">?? Luu thay d?i</button>
+          </div>
+
+          <!-- Password Tab -->
+          <div id="tab-password" class="card" style="padding:28px;display:none">
+            <h3 style="font-size:18px;font-weight:700;margin-bottom:20px">�?i m?t kh?u</h3>
+            <div class="form-group"><label>M?t kh?u hi?n t?i *</label><input type="password" id="currentPwd" class="form-control"></div>
+            <div class="form-group"><label>M?t kh?u m?i *</label><input type="password" id="newPwd" class="form-control" placeholder="T?i thi?u 8 k� t?"></div>
+            <div class="form-group"><label>X�c nh?n m?t kh?u m?i *</label><input type="password" id="confirmPwd" class="form-control"></div>
+            <button class="btn btn-primary" onclick="changePassword()">?? �?i m?t kh?u</button>
+          </div>
+
+          <!-- Bank Tab -->
+          <div id="tab-bank" class="card" style="padding:28px;display:none">
+            <h3 style="font-size:18px;font-weight:700;margin-bottom:20px">T�i kho?n ng�n h�ng nh?n ho�n c?c</h3>
+            <div class="form-group"><label>T�n ng�n h�ng</label><input type="text" id="bankName" class="form-control" placeholder="Vietcombank, Techcombank..."></div>
+            <div class="form-group"><label>S? t�i kho?n</label><input type="text" id="bankAccountNum" class="form-control" placeholder="1234567890"></div>
+            <button class="btn btn-primary" onclick="saveBankAccount()">?? Luu t�i kho?n</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/cart.js"></script>
+  <script src="../assets/js/payment.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAuth('/customer/login.html?redirect=/customer/profile.html');
+    if (session) { document.getElementById('userMenuLabel').textContent = '?? ' + session.fullName; CartModule.updateCartBadge(session.userId); }
+    function toggleUserMenu() { const dd = document.getElementById('userDropdown'); dd.style.display = dd.style.display === 'none' ? 'block' : 'none'; }
+    document.addEventListener('click', e => { if (!document.getElementById('userMenu').contains(e.target)) document.getElementById('userDropdown').style.display = 'none'; });
+    function doLogout() { AuthModule.logout(); }
+
+    function showTab(tab, el) {
+      document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+      document.getElementById('tab-' + tab).style.display = 'block';
+      document.querySelectorAll('.profile-nav a').forEach(a => a.classList.remove('active'));
+      if (el) el.classList.add('active');
+    }
+
+    function loadProfile() {
+      if (!session) return;
+      const user = StorageService.getById('crb_users', session.userId);
+      if (!user) return;
+      document.getElementById('profileName').textContent = user.fullName;
+      document.getElementById('profileEmail').textContent = user.email || user.phone;
+      document.getElementById('loyaltyPoints').textContent = user.loyaltyPoints || 0;
+      document.getElementById('fullName').value = user.fullName || '';
+      document.getElementById('email').value = user.email || '';
+      document.getElementById('phone').value = user.phone || '';
+      document.getElementById('address').value = user.address || '';
+      document.getElementById('bankName').value = user.bankAccount?.bankName || '';
+      document.getElementById('bankAccountNum').value = user.bankAccount?.accountNumber || '';
+    }
+
+    function saveProfile() {
+      const result = AuthModule.updateProfile(session.userId, {
+        fullName: document.getElementById('fullName').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        address: document.getElementById('address').value.trim(),
+      });
+      if (result.error) { Toast.show(result.error, 'error'); return; }
+      Toast.show('C?p nh?t th�ng tin th�nh c�ng!', 'success');
+      loadProfile();
+    }
+
+    function changePassword() {
+      const current = document.getElementById('currentPwd').value;
+      const newPwd = document.getElementById('newPwd').value;
+      const confirm = document.getElementById('confirmPwd').value;
+      if (newPwd !== confirm) { Toast.show('M?t kh?u x�c nh?n kh�ng kh?p', 'error'); return; }
+      const result = AuthModule.changePassword(session.userId, current, newPwd);
+      if (result.error) { Toast.show(result.error, 'error'); return; }
+      Toast.show('�?i m?t kh?u th�nh c�ng!', 'success');
+      document.getElementById('currentPwd').value = '';
+      document.getElementById('newPwd').value = '';
+      document.getElementById('confirmPwd').value = '';
+    }
+
+    function saveBankAccount() {
+      const bankName = document.getElementById('bankName').value.trim();
+      const accountNumber = document.getElementById('bankAccountNum').value.trim();
+      PaymentModule.registerBankAccount(session.userId, { bankName, accountNumber });
+      Toast.show('�� luu t�i kho?n ng�n h�ng!', 'success');
+    }
+
+    loadProfile();
+  </script>
+</body>
+</html>
+
+
+

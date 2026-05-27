@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>�on h�ng c?a t�i - LuxRent</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/customer.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <style>
+    .order-card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--gray-200); margin-bottom: 16px; overflow: hidden; transition: box-shadow 0.2s; }
+    .order-card:hover { box-shadow: var(--shadow); }
+    .order-card-header { padding: 16px 20px; background: var(--gray-50); border-bottom: 1px solid var(--gray-200); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .order-card-body { padding: 16px 20px; }
+    .order-card-footer { padding: 12px 20px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; gap: 8px; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/index.html" class="navbar-brand"><img src="/assets/images/logo.png" alt="LuxRent" class="site-logo"></a>
+      <div class="navbar-nav">
+      <a href="/index.html" class="nav-link">Trang chủ</a>
+      <a href="/customer/products.html" class="nav-link">Sản phẩm</a>
+      <a href="/customer/fitting-booking.html" class="nav-link">Đặt lịch thử</a>
+      </div>
+      <div class="navbar-actions">
+        <a href="/customer/cart.html" class="cart-btn">?? Gi? h�ng <span class="cart-badge" style="display:none">0</span></a>
+        <div class="user-menu" id="userMenu">
+          <button class="user-btn" onclick="toggleUserMenu()"><span id="userMenuLabel">??</span> ?</button>
+          <div class="user-dropdown" id="userDropdown" style="display:none">
+            <div id="authLinks"><a href="/customer/profile.html">?? H? so</a><a href="/customer/orders.html">?? �on h�ng</a><hr><a href="#" onclick="doLogout()">?? �ang xu?t</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header"><div class="container"><h1>Đơn hàng của tôi</h1></div></div>
+
+  <section class="section">
+    <div class="container">
+      <div id="newOrderAlert" class="alert alert-success" style="display:none">? �?t h�ng th�nh c�ng! �on h�ng c?a b?n dang ch? x�c nh?n.</div>
+
+      <div class="tabs" id="orderTabs">
+        <button class="tab-btn active" onclick="filterOrders('')">T?t c?</button>
+        <button class="tab-btn" onclick="filterOrders('cho_xac_nhan')">Ch? x�c nh?n</button>
+        <button class="tab-btn" onclick="filterOrders('da_xac_nhan')">�� x�c nh?n</button>
+        <button class="tab-btn" onclick="filterOrders('dang_giao')">�ang giao</button>
+        <button class="tab-btn" onclick="filterOrders('dang_thue')">�ang thu�</button>
+        <button class="tab-btn" onclick="filterOrders('da_tra_do')">�� tr? d?</button>
+        <button class="tab-btn" onclick="filterOrders('da_huy')">�� h?y</button>
+      </div>
+
+      <div id="ordersContainer"></div>
+
+      <hr class="divider" style="margin:40px 0">
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:20px">?? L?ch th? trang ph?c</h2>
+      <div id="fittingsContainer"></div>
+    </div>
+  </section>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/product.js"></script>
+  <script src="../assets/js/cart.js"></script>
+  <script src="../assets/js/order.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAuth('/customer/login.html?redirect=/customer/orders.html');
+    if (session) { document.getElementById('userMenuLabel').textContent = '?? ' + session.fullName; CartModule.updateCartBadge(session.userId); }
+    function toggleUserMenu() { const dd = document.getElementById('userDropdown'); dd.style.display = dd.style.display === 'none' ? 'block' : 'none'; }
+    document.addEventListener('click', e => { if (!document.getElementById('userMenu').contains(e.target)) document.getElementById('userDropdown').style.display = 'none'; });
+    function doLogout() { AuthModule.logout(); }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('newOrder')) document.getElementById('newOrderAlert').style.display = 'flex';
+
+    function filterOrders(status) {
+      document.querySelectorAll('#orderTabs .tab-btn').forEach((b, i) => {
+        const statuses = ['', 'cho_xac_nhan', 'da_xac_nhan', 'dang_giao', 'dang_thue', 'da_tra_do', 'da_huy'];
+        b.classList.toggle('active', statuses[i] === status);
+      });
+      renderOrders(status);
+    }
+
+    function renderOrders(statusFilter = '') {
+      if (!session) return;
+      let orders = OrderModule.getRentalOrders({ userId: session.userId });
+      if (statusFilter) orders = orders.filter(o => o.status === statusFilter);
+      const container = document.getElementById('ordersContainer');
+      if (!orders.length) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">??</div><div class="empty-state-title">Chua c� don h�ng</div><a href="/customer/products.html" class="btn btn-primary" style="margin-top:16px">Xem s?n ph?m</a></div>';
+        return;
+      }
+
+      // Check overdue reminders
+      const now = new Date();
+      const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      orders.filter(o => o.status === 'dang_thue' && o.agreedReturnDate && new Date(o.agreedReturnDate) <= in24h && new Date(o.agreedReturnDate) > now)
+        .forEach(o => Toast.show(`?? �on ${o.orderRef} s?p d?n h?n tr?!`, 'warning'));
+
+      container.innerHTML = orders.map(o => `
+        <div class="order-card">
+          <div class="order-card-header">
+            <div>
+              <div style="font-weight:700;font-size:15px">${o.orderRef}</div>
+              <div style="font-size:12px;color:var(--gray-400)">${formatDate(o.createdAt)}</div>
+            </div>
+            <span class="status-badge status-${o.status}">${STATUS_LABELS[o.status] || o.status}</span>
+          </div>
+          <div class="order-card-body">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+              ${(o.items || []).slice(0, 3).map(i => `<img src="${i.productImage || 'https://via.placeholder.com/50x65'}" style="width:50px;height:65px;object-fit:cover;border-radius:6px" title="${i.productName}">`).join('')}
+              ${(o.items || []).length > 3 ? `<div style="width:50px;height:65px;background:var(--gray-100);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--gray-500)">+${o.items.length - 3}</div>` : ''}
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:14px">
+              <span style="color:var(--gray-500)">${(o.items || []).length} s?n ph?m</span>
+              <span style="font-weight:700;color:var(--primary)">${formatCurrency(o.totalAmount)}</span>
+            </div>
+            ${o.agreedReturnDate && o.status === 'dang_thue' ? `<div style="font-size:12px;color:var(--warning);margin-top:4px">? H?n tr?: ${formatDate(o.agreedReturnDate)}</div>` : ''}
+          </div>
+          <div class="order-card-footer">
+            ${o.status === 'cho_xac_nhan' ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder('${o.id}')">H?y don</button>` : ''}
+            <a href="/customer/order-detail.html?id=${o.id}" class="btn btn-primary btn-sm">Xem chi ti?t</a>
+          </div>
+        </div>`).join('');
+    }
+
+    function cancelOrder(orderId) {
+      showConfirm('B?n c� ch?c mu?n h?y don h�ng n�y?', () => {
+        const result = OrderModule.cancelRentalOrder(orderId, session.userId);
+        if (result.error) { Toast.show(result.error, 'error'); return; }
+        Toast.show('�� h?y don h�ng', 'success');
+        renderOrders('');
+      });
+    }
+
+    function renderFittings() {
+      if (!session) return;
+      const bookings = OrderModule.getFittingBookings({ userId: session.userId });
+      const container = document.getElementById('fittingsContainer');
+      if (!bookings.length) { container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">??</div><div class="empty-state-title">Chua c� l?ch th?</div><a href="/customer/fitting-booking.html" class="btn btn-outline" style="margin-top:16px">�?t l?ch th?</a></div>'; return; }
+      container.innerHTML = bookings.map(b => `
+        <div class="order-card">
+          <div class="order-card-header">
+            <div><div style="font-weight:700">${b.bookingRef}</div><div style="font-size:12px;color:var(--gray-400)">${formatDate(b.createdAt)}</div></div>
+            <span class="status-badge status-${b.status}">${STATUS_LABELS[b.status] || b.status}</span>
+          </div>
+          <div class="order-card-body" style="font-size:14px">
+            <div>?? ${formatDate(b.preferredDate)} | ? ${b.timeSlot}</div>
+            ${b.products?.length ? `<div style="margin-top:6px;color:var(--gray-500)">?? ${b.products.map(p => p.productName).join(', ')}</div>` : ''}
+          </div>
+          <div class="order-card-footer">
+            ${b.status === 'cho_xac_nhan' ? `<button class="btn btn-danger btn-sm" onclick="cancelFitting('${b.id}')">H?y l?ch</button>` : ''}
+          </div>
+        </div>`).join('');
+    }
+
+    function cancelFitting(id) {
+      showConfirm('H?y l?ch th? n�y?', () => {
+        OrderModule.cancelFittingBooking(id);
+        Toast.show('�� h?y l?ch th?', 'success');
+        renderFittings();
+      });
+    }
+
+    renderOrders('');
+    renderFittings();
+  </script>
+</body>
+</html>
+
+
+

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Danh mục - LuxRent Admin</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div class="topbar-title">🏷️ Quản lý danh mục</div>
+        <div class="topbar-actions" id="topbarActions"></div>
+      </div>
+      <div class="admin-content">
+        <div class="table-container">
+          <div class="table-header"><span style="font-weight:600">Danh sách danh mục</span></div>
+          <table class="admin-table">
+            <thead><tr><th>Tên danh mục</th><th>Số sản phẩm</th><th>Mặc định</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
+            <tbody id="catsTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="catModal" class="modal-overlay" style="display:none">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-header"><div class="modal-title" id="modalTitle">Thêm danh mục</div><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <input type="hidden" id="editId">
+      <div class="form-group"><label>Tên danh mục *</label><input type="text" id="catName" class="form-control" placeholder="Áo dài, Váy cưới..."></div>
+      <div id="modalError" class="alert alert-error" style="display:none"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="saveCat()" style="background:var(--admin-primary)">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/product.js"></script>
+  <script src="../assets/js/admin-common.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAdminAuth();
+    if (session) {
+      document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('categories', session);
+      const _canEdit = canEdit('categories', session.role);
+      if (_canEdit) {
+        document.getElementById('topbarActions').innerHTML = `<button class="topbar-btn topbar-btn-primary" onclick="openModal()">+ Thêm danh mục</button>`;
+      }
+
+      function renderTable() {
+        const cats = ProductModule.getCategories();
+        const allProducts = StorageService.getAll('crb_products').filter(p => !p.isArchived && !p.deleted);
+        const tbody = document.getElementById('catsTable');
+        if (!cats.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--gray-400)">Chưa có danh mục</td></tr>'; return; }
+        tbody.innerHTML = cats.map(c => {
+          const count = allProducts.filter(p => p.categoryId === c.id).length;
+          return `<tr>
+            <td style="font-weight:600">${c.name}</td>
+            <td>${count} sản phẩm</td>
+            <td>${c.isDefault ? '<span class="status-badge status-da_xac_nhan">Mặc định</span>' : '-'}</td>
+            <td>${formatDate(c.createdAt)}</td>
+            <td class="table-actions-cell">
+              ${_canEdit && !c.isDefault ? `<button class="action-btn action-btn-edit" onclick="openEdit('${c.id}')">Sửa</button>` : ''}
+              ${_canEdit && !c.isDefault ? `<button class="action-btn action-btn-delete" onclick="deleteCat('${c.id}','${c.name}',${count})">Xóa</button>` : ''}
+              ${!_canEdit ? '<span style="font-size:12px;color:var(--gray-400)">Chỉ xem</span>' : ''}
+            </td>
+          </tr>`;
+        }).join('');
+      }
+
+      window.openModal = () => { document.getElementById('editId').value = ''; document.getElementById('catName').value = ''; document.getElementById('modalTitle').textContent = 'Thêm danh mục'; document.getElementById('modalError').style.display = 'none'; document.getElementById('catModal').style.display = 'flex'; };
+      window.openEdit = (id) => { const c = ProductModule.getCategories().find(c => c.id === id); if (!c) return; document.getElementById('editId').value = id; document.getElementById('catName').value = c.name; document.getElementById('modalTitle').textContent = 'Sửa danh mục'; document.getElementById('modalError').style.display = 'none'; document.getElementById('catModal').style.display = 'flex'; };
+      window.closeModal = () => document.getElementById('catModal').style.display = 'none';
+
+      window.saveCat = () => {
+        const errEl = document.getElementById('modalError');
+        const id = document.getElementById('editId').value;
+        const name = document.getElementById('catName').value.trim();
+        if (!name) { errEl.textContent = 'Vui lòng nhập tên danh mục'; errEl.style.display = 'flex'; return; }
+        showConfirm(id ? 'Cập nhật danh mục?' : 'Thêm danh mục mới?', () => {
+          const result = id ? ProductModule.updateCategory(id, name) : ProductModule.createCategory(name);
+          if (result.error) { errEl.textContent = result.error; errEl.style.display = 'flex'; return; }
+          Toast.show(id ? 'Đã cập nhật danh mục' : 'Đã thêm danh mục', 'success');
+          closeModal(); renderTable();
+        });
+      };
+
+      window.deleteCat = (id, name, count) => {
+        const msg = count > 0 ? `Danh mục "${name}" có ${count} sản phẩm. Các sản phẩm sẽ chuyển sang "Chưa phân loại". Tiếp tục?` : `Xóa danh mục "${name}"?`;
+        showConfirm(msg, () => { ProductModule.deleteCategory(id); Toast.show('Đã xóa danh mục', 'success'); renderTable(); });
+      };
+
+      renderTable();
+    }
+  </script>
+</body>
+</html>
+
+

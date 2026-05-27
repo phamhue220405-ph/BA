@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>�?t l?ch th? - LuxRent</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/customer.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <style>
+    .time-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+    .time-slot { padding: 10px; border: 2px solid var(--gray-200); border-radius: var(--radius-sm); text-align: center; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .time-slot:hover { border-color: var(--primary); color: var(--primary); }
+    .time-slot.selected { border-color: var(--primary); background: var(--primary); color: var(--white); }
+    .time-slot.full { background: var(--gray-100); color: var(--gray-400); cursor: not-allowed; border-color: var(--gray-200); }
+    .confirm-card { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: var(--white); border-radius: var(--radius-lg); padding: 32px; text-align: center; }
+    .confirm-ref { font-size: 28px; font-weight: 700; letter-spacing: 2px; margin: 16px 0; }
+    @media (max-width: 480px) { .time-slots { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/index.html" class="navbar-brand"><img src="/assets/images/logo.png" alt="LuxRent" class="site-logo"></a>
+      <div class="navbar-nav">
+      <a href="/index.html" class="nav-link">Trang chủ</a>
+      <a href="/customer/products.html" class="nav-link">Sản phẩm</a>
+      <a href="/customer/fitting-booking.html" class="nav-link active">Đặt lịch thử</a>
+      </div>
+      <div class="navbar-actions">
+        <a href="/customer/cart.html" class="cart-btn">?? Gi? h�ng <span class="cart-badge" style="display:none">0</span></a>
+        <div class="user-menu" id="userMenu">
+          <button class="user-btn" onclick="toggleUserMenu()"><span id="userMenuLabel">?? �ang nh?p</span> ?</button>
+          <div class="user-dropdown" id="userDropdown" style="display:none">
+            <div id="guestLinks"><a href="/customer/login.html">?? �ang nh?p</a></div>
+            <div id="authLinks" style="display:none"><a href="/customer/profile.html">?? H? so</a><a href="/customer/orders.html">?? �on h�ng</a><hr><a href="#" onclick="doLogout()">?? �ang xu?t</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <div class="container">
+      <h1>Đặt lịch thử trang phục</h1>
+      <p>Miễn phí & Không cần thanh toán ở đơn của hàng thử trực tiếp</p>
+  </div>
+
+  <section class="section">
+    <div class="container" style="max-width:700px">
+      <div id="bookingForm">
+        <div class="card" style="padding:32px">
+          <div class="alert alert-info">?? �?t l?ch th? ho�n to�n <strong>mi?n ph�</strong>. B?n kh�ng c?n thanh to�n d? d?t l?ch.</div>
+
+          <div class="form-group">
+            <label>H? v� t�n <span style="color:var(--error)">*</span></label>
+            <input type="text" id="custName" class="form-control" placeholder="Nguy?n Van A">
+          </div>
+          <div class="form-group">
+            <label>S? di?n tho?i <span style="color:var(--error)">*</span></label>
+            <input type="tel" id="custPhone" class="form-control" placeholder="0901234567">
+          </div>
+
+          <div class="form-group">
+            <label>Trang ph?c mu?n th?</label>
+            <div id="selectedProducts" style="margin-bottom:8px"></div>
+            <select id="productSelect" class="form-control" onchange="addProduct()">
+              <option value="">-- Ch?n trang ph?c --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Ng�y h?n <span style="color:var(--error)">*</span></label>
+            <input type="date" id="bookingDate" class="form-control" onchange="loadSlots()">
+          </div>
+
+          <div class="form-group">
+            <label>Khung gi? <span style="color:var(--error)">*</span></label>
+            <div class="time-slots" id="timeSlots">
+              <p style="color:var(--gray-400);font-size:13px;grid-column:1/-1">Ch?n ng�y d? xem khung gi?</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Ghi ch�</label>
+            <textarea id="bookingNotes" class="form-control" rows="3" placeholder="Y�u c?u d?c bi?t..."></textarea>
+          </div>
+
+          <div id="bookingError" class="alert alert-error" style="display:none"></div>
+          <button class="btn btn-primary btn-full btn-lg" onclick="submitBooking()">?? X�c nh?n d?t l?ch</button>
+        </div>
+      </div>
+
+      <div id="confirmScreen" style="display:none">
+        <div class="confirm-card">
+          <div style="font-size:48px">?</div>
+          <h2 style="margin:12px 0 8px">�?t l?ch th�nh c�ng!</h2>
+          <p style="opacity:0.85">M� d?t l?ch c?a b?n</p>
+          <div class="confirm-ref" id="confirmRef"></div>
+          <div id="confirmDetails" style="background:rgba(255,255,255,0.15);border-radius:var(--radius);padding:16px;margin:16px 0;text-align:left;font-size:14px"></div>
+          <p style="font-size:13px;opacity:0.8">Ch�ng t�i s? li�n h? x�c nh?n qua s? di?n tho?i c?a b?n</p>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:20px">
+          <a href="/customer/orders.html" class="btn btn-primary" style="flex:1;text-align:center">Xem l?ch th? c?a t�i</a>
+          <a href="/customer/products.html" class="btn btn-secondary" style="flex:1;text-align:center">Ti?p t?c xem s?n ph?m</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/product.js"></script>
+  <script src="../assets/js/cart.js"></script>
+  <script src="../assets/js/order.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = StorageService.getSession();
+    if (session) { document.getElementById('userMenuLabel').textContent = '?? ' + session.fullName; document.getElementById('guestLinks').style.display = 'none'; document.getElementById('authLinks').style.display = 'block'; CartModule.updateCartBadge(session.userId); if (session.fullName) document.getElementById('custName').value = session.fullName; }
+    function toggleUserMenu() { const dd = document.getElementById('userDropdown'); dd.style.display = dd.style.display === 'none' ? 'block' : 'none'; }
+    document.addEventListener('click', e => { if (!document.getElementById('userMenu').contains(e.target)) document.getElementById('userDropdown').style.display = 'none'; });
+    function doLogout() { AuthModule.logout(); }
+
+    // Set min date to tomorrow
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    document.getElementById('bookingDate').min = tomorrow;
+
+    // Load products
+    const products = ProductModule.getAll();
+    const sel = document.getElementById('productSelect');
+    products.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; sel.appendChild(o); });
+
+    // Pre-select from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const preProductId = urlParams.get('productId');
+    let selectedProducts = [];
+    if (preProductId) { const p = ProductModule.getById(preProductId); if (p) { selectedProducts.push({ productId: p.id, productName: p.name, size: '', color: '' }); renderSelectedProducts(); } }
+
+    function addProduct() {
+      const id = sel.value;
+      if (!id) return;
+      if (selectedProducts.find(p => p.productId === id)) { Toast.show('S?n ph?m d� du?c th�m', 'warning'); sel.value = ''; return; }
+      const p = ProductModule.getById(id);
+      selectedProducts.push({ productId: p.id, productName: p.name, size: '', color: '' });
+      renderSelectedProducts();
+      sel.value = '';
+    }
+
+    function renderSelectedProducts() {
+      const container = document.getElementById('selectedProducts');
+      container.innerHTML = selectedProducts.map((p, i) => `
+        <div style="display:flex;align-items:center;gap:8px;background:var(--gray-50);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:6px">
+          <span style="flex:1;font-size:14px;font-weight:500">${p.productName}</span>
+          <button onclick="removeProduct(${i})" style="background:none;border:none;color:var(--error);cursor:pointer;font-size:16px">?</button>
+        </div>`).join('');
+    }
+
+    function removeProduct(idx) { selectedProducts.splice(idx, 1); renderSelectedProducts(); }
+
+    const TIME_SLOTS = ['08:00-09:00','09:00-10:00','10:00-11:00','11:00-12:00','13:00-14:00','14:00-15:00','15:00-16:00','16:00-17:00'];
+    let selectedSlot = '';
+
+    function loadSlots() {
+      const date = document.getElementById('bookingDate').value;
+      if (!date) return;
+      const container = document.getElementById('timeSlots');
+      container.innerHTML = TIME_SLOTS.map(slot => {
+        const available = OrderModule.checkSlotAvailability(date, slot);
+        return `<div class="time-slot ${available ? '' : 'full'}" onclick="${available ? `selectSlot('${slot}',this)` : ''}">${slot}${available ? '' : '<br><small>�?y</small>'}</div>`;
+      }).join('');
+    }
+
+    function selectSlot(slot, el) {
+      selectedSlot = slot;
+      document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    function submitBooking() {
+      const errEl = document.getElementById('bookingError');
+      errEl.style.display = 'none';
+      const name = document.getElementById('custName').value.trim();
+      const phone = document.getElementById('custPhone').value.trim();
+      const date = document.getElementById('bookingDate').value;
+      const notes = document.getElementById('bookingNotes').value;
+
+      if (!name) { errEl.textContent = 'Vui l�ng nh?p h? t�n'; errEl.style.display = 'flex'; return; }
+      if (!phone) { errEl.textContent = 'Vui l�ng nh?p s? di?n tho?i'; errEl.style.display = 'flex'; return; }
+      if (!date) { errEl.textContent = 'Vui l�ng ch?n ng�y h?n'; errEl.style.display = 'flex'; return; }
+      if (!selectedSlot) { errEl.textContent = 'Vui l�ng ch?n khung gi?'; errEl.style.display = 'flex'; return; }
+
+      const userId = session?.userId || 'guest_' + Date.now();
+      const result = OrderModule.createFittingBooking(userId, { customerName: name, customerPhone: phone, products: selectedProducts, preferredDate: date, timeSlot: selectedSlot, notes });
+      if (result.error) { errEl.textContent = result.error; errEl.style.display = 'flex'; return; }
+
+      document.getElementById('bookingForm').style.display = 'none';
+      document.getElementById('confirmScreen').style.display = 'block';
+      document.getElementById('confirmRef').textContent = result.booking.bookingRef;
+      document.getElementById('confirmDetails').innerHTML = `
+        <div>?? <strong>${name}</strong> - ${phone}</div>
+        <div>?? ${formatDate(date)} | ? ${selectedSlot}</div>
+        ${selectedProducts.length ? `<div>?? ${selectedProducts.map(p => p.productName).join(', ')}</div>` : ''}`;
+    }
+  </script>
+</body>
+</html>
+
+
+

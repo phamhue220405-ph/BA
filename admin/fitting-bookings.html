@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lịch thử - LuxRent Admin</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div class="topbar-title">📅 Quản lý lịch thử</div>
+        <div class="topbar-actions" id="topbarActions"></div>
+      </div>
+      <div class="admin-content">
+        <div class="table-container">
+          <div class="table-header">
+            <div class="table-search">
+              <input type="text" id="searchInput" placeholder="Tìm tên khách, mã lịch..." oninput="applyFilters()">
+            </div>
+            <select id="statusFilter" class="form-control" style="width:160px;padding:8px 12px;font-size:13px" onchange="applyFilters()">
+              <option value="">Tất cả</option>
+              <option value="cho_xac_nhan">Chờ xác nhận</option>
+              <option value="da_xac_nhan">Đã xác nhận</option>
+              <option value="hoan_thanh">Hoàn thành</option>
+              <option value="da_huy">Đã hủy</option>
+            </select>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="admin-table">
+              <thead><tr><th>Mã lịch</th><th>Khách hàng</th><th>Trang phục</th><th>Ngày hẹn</th><th>Khung giờ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+              <tbody id="bookingsTable"></tbody>
+            </table>
+          </div>
+          <div id="pagination"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="editModal" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <div class="modal-header"><div class="modal-title">Cập nhật lịch thử</div><button class="modal-close" onclick="closeEditModal()">✕</button></div>
+      <input type="hidden" id="editId">
+      <div class="form-group"><label>Ngày hẹn</label><input type="date" id="editDate" class="form-control"></div>
+      <div class="form-group"><label>Khung giờ</label>
+        <select id="editSlot" class="form-control">
+          <option>08:00-09:00</option><option>09:00-10:00</option><option>10:00-11:00</option>
+          <option>11:00-12:00</option><option>13:00-14:00</option><option>14:00-15:00</option>
+          <option>15:00-16:00</option><option>16:00-17:00</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Trạng thái</label>
+        <select id="editStatus" class="form-control">
+          <option value="cho_xac_nhan">Chờ xác nhận</option>
+          <option value="da_xac_nhan">Đã xác nhận</option>
+          <option value="hoan_thanh">Hoàn thành</option>
+          <option value="da_huy">Đã hủy</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeEditModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="saveEdit()" style="background:var(--admin-primary)">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="createModal" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <div class="modal-header"><div class="modal-title">Tạo lịch thử mới</div><button class="modal-close" onclick="closeCreateModal()">✕</button></div>
+      <div class="form-group"><label>Tên khách hàng *</label><input type="text" id="newName" class="form-control"></div>
+      <div class="form-group"><label>Số điện thoại *</label><input type="text" id="newPhone" class="form-control"></div>
+      <div class="form-group"><label>Ngày hẹn *</label><input type="date" id="newDate" class="form-control"></div>
+      <div class="form-group"><label>Khung giờ *</label>
+        <select id="newSlot" class="form-control">
+          <option>08:00-09:00</option><option>09:00-10:00</option><option>10:00-11:00</option>
+          <option>11:00-12:00</option><option>13:00-14:00</option><option>14:00-15:00</option>
+          <option>15:00-16:00</option><option>16:00-17:00</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCreateModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="createBooking()" style="background:var(--admin-primary)">Tạo lịch</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/order.js"></script>
+  <script src="../assets/js/admin-common.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAdminAuth();
+    if (session) {
+      document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('fitting-bookings', session);
+      const _canEdit = canEdit('fitting-bookings', session.role);
+      if (_canEdit) {
+        document.getElementById('topbarActions').innerHTML = `<button class="topbar-btn topbar-btn-primary" onclick="openCreateModal()">+ Tạo lịch thử</button>`;
+      }
+
+      let currentPage = 1, allBookings = [];
+
+      function applyFilters() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const status = document.getElementById('statusFilter').value;
+        allBookings = OrderModule.getFittingBookings({ status }).filter(b =>
+          !search || b.customerName?.toLowerCase().includes(search) || b.bookingRef?.toLowerCase().includes(search)
+        );
+        currentPage = 1;
+        renderTable();
+      }
+
+      function renderTable() {
+        const paged = paginate(allBookings, currentPage);
+        const tbody = document.getElementById('bookingsTable');
+        if (!paged.items.length) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)">Không có lịch thử</td></tr>';
+        } else {
+          tbody.innerHTML = paged.items.map(b => `
+            <tr>
+              <td style="font-weight:600;color:var(--admin-primary)">${b.bookingRef}</td>
+              <td><div style="font-weight:500">${b.customerName}</div><div style="font-size:12px;color:var(--gray-400)">${b.customerPhone}</div></td>
+              <td style="font-size:13px">${(b.products||[]).map(p=>p.productName).join(', ') || '-'}</td>
+              <td>${formatDate(b.preferredDate)}</td>
+              <td>${b.timeSlot}</td>
+              <td><span class="status-badge status-${b.status}">${STATUS_LABELS[b.status]||b.status}</span></td>
+              <td class="table-actions-cell">
+                ${_canEdit ? `<button class="action-btn action-btn-edit" onclick="openEdit('${b.id}')">Sửa</button>` : ''}
+                ${_canEdit && b.status !== 'da_huy' ? `<button class="action-btn action-btn-delete" onclick="cancelBooking('${b.id}')">Hủy</button>` : ''}
+                ${_canEdit && b.status === 'hoan_thanh' ? `<button class="action-btn action-btn-view" onclick="convertToOrder('${b.id}')">→ Đơn thuê</button>` : ''}
+                ${!_canEdit ? '<span style="font-size:12px;color:var(--gray-400)">Chỉ xem</span>' : ''}
+              </td>
+            </tr>`).join('');
+        }
+        renderPagination('pagination', paged, 'goPage');
+      }
+
+      window.goPage = (p) => { currentPage = p; renderTable(); };
+
+      window.openEdit = (id) => {
+        const b = OrderModule.getFittingBookingById(id);
+        if (!b) return;
+        document.getElementById('editId').value = id;
+        document.getElementById('editDate').value = b.preferredDate;
+        document.getElementById('editSlot').value = b.timeSlot;
+        document.getElementById('editStatus').value = b.status;
+        document.getElementById('editModal').style.display = 'flex';
+      };
+      window.closeEditModal = () => document.getElementById('editModal').style.display = 'none';
+
+      window.saveEdit = () => {
+        const id = document.getElementById('editId').value;
+        const result = OrderModule.updateFittingBooking(id, {
+          preferredDate: document.getElementById('editDate').value,
+          timeSlot: document.getElementById('editSlot').value,
+          status: document.getElementById('editStatus').value,
+        });
+        if (result.error) { Toast.show(result.error, 'error'); return; }
+        Toast.show('Đã cập nhật lịch thử', 'success');
+        closeEditModal();
+        applyFilters();
+      };
+
+      window.cancelBooking = (id) => {
+        showConfirm('Hủy lịch thử này?', () => {
+          OrderModule.cancelFittingBooking(id);
+          Toast.show('Đã hủy lịch thử', 'success');
+          applyFilters();
+        });
+      };
+
+      window.convertToOrder = (id) => {
+        OrderModule.convertFittingToRental(id);
+        Toast.show('Chuyển sang tạo đơn thuê...', 'info');
+        window.location.href = '/admin/orders.html';
+      };
+
+      window.openCreateModal = () => document.getElementById('createModal').style.display = 'flex';
+      window.closeCreateModal = () => document.getElementById('createModal').style.display = 'none';
+
+      window.createBooking = () => {
+        const name = document.getElementById('newName').value.trim();
+        const phone = document.getElementById('newPhone').value.trim();
+        const date = document.getElementById('newDate').value;
+        const slot = document.getElementById('newSlot').value;
+        if (!name || !phone || !date) { Toast.show('Vui lòng điền đầy đủ thông tin', 'warning'); return; }
+        const result = OrderModule.createFittingBooking('staff_' + session.userId, { customerName: name, customerPhone: phone, products: [], preferredDate: date, timeSlot: slot, notes: '' });
+        if (result.error) { Toast.show(result.error, 'error'); return; }
+        Toast.show('Đã tạo lịch thử', 'success');
+        closeCreateModal();
+        applyFilters();
+      };
+
+      applyFilters();
+    }
+  </script>
+</body>
+</html>
+
+

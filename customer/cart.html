@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gi? h�ng - LuxRent</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/customer.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a href="/index.html" class="navbar-brand"><img src="/assets/images/logo.png" alt="LuxRent" class="site-logo"></a>
+      <div class="navbar-nav">
+      <a href="/index.html" class="nav-link">Trang chủ</a>
+      <a href="/customer/products.html" class="nav-link">Sản phẩm</a>
+      <a href="/customer/fitting-booking.html" class="nav-link">Đặt lịch thử</a>
+      </div>
+      <div class="navbar-actions">
+        <a href="/customer/cart.html" class="cart-btn">?? Gi? h�ng <span class="cart-badge" style="display:none">0</span></a>
+        <div class="user-menu" id="userMenu">
+          <button class="user-btn" onclick="toggleUserMenu()"><span id="userMenuLabel">??</span> ?</button>
+          <div class="user-dropdown" id="userDropdown" style="display:none">
+            <div id="authLinks"><a href="/customer/profile.html">?? H? so</a><a href="/customer/orders.html">?? �on h�ng</a><hr><a href="#" onclick="doLogout()">?? �ang xu?t</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-header">
+      <div class="container"><h1>Giỏ hàng của bạn</h1></div>
+  </div>
+
+  <section class="section">
+    <div class="container">
+      <div id="cartContent"></div>
+    </div>
+  </section>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/product.js"></script>
+  <script src="../assets/js/cart.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAuth('/customer/login.html?redirect=/customer/cart.html');
+    if (session) {
+      document.getElementById('userMenuLabel').textContent = '?? ' + session.fullName;
+      CartModule.updateCartBadge(session.userId);
+    }
+    function toggleUserMenu() { const dd = document.getElementById('userDropdown'); dd.style.display = dd.style.display === 'none' ? 'block' : 'none'; }
+    document.addEventListener('click', e => { if (!document.getElementById('userMenu').contains(e.target)) document.getElementById('userDropdown').style.display = 'none'; });
+    function doLogout() { AuthModule.logout(); }
+
+    function renderCart() {
+      if (!session) return;
+      const items = CartModule.getCart(session.userId);
+      const totals = CartModule.getTotal(session.userId);
+      const container = document.getElementById('cartContent');
+
+      if (!items.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">??</div><div class="empty-state-title">Gi? h�ng tr?ng</div><div class="empty-state-desc">H�y th�m trang ph?c v�o gi? h�ng</div><br><a href="/customer/products.html" class="btn btn-primary">Xem s?n ph?m</a></div>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 360px;gap:32px">
+          <div>
+            <div class="card">
+              ${items.map(item => `
+                <div class="cart-item" id="item-${item.id}">
+                  <div class="cart-item-img">
+                    <img src="${item.productImage || 'https://via.placeholder.com/100x130?text=No+Image'}" alt="${item.productName}">
+                  </div>
+                  <div class="cart-item-info" style="flex:1">
+                    <div class="cart-item-name">${item.productName}</div>
+                    <div class="cart-item-meta">
+                      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px">
+                        <span>Size: <select onchange="updateItem('${item.id}','size',this.value)" style="border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:13px">
+                          ${['S','M','L','XL','XXL'].map(s => `<option ${s===item.size?'selected':''}>${s}</option>`).join('')}
+                        </select></span>
+                        <span>M�u: <input type="text" value="${item.color}" onchange="updateItem('${item.id}','color',this.value)" style="border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:13px;width:100px"></span>
+                      </div>
+                      <div style="display:flex;gap:16px;flex-wrap:wrap">
+                        <span>T?: <input type="date" value="${item.rentalStartDate}" onchange="updateItem('${item.id}','rentalStartDate',this.value)" style="border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:13px"></span>
+                        <span>�?n: <input type="date" value="${item.rentalEndDate}" onchange="updateItem('${item.id}','rentalEndDate',this.value)" style="border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:13px"></span>
+                      </div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+                      <div>
+                        <div class="cart-item-price">${formatCurrency(item.subtotal)}</div>
+                        <div style="font-size:12px;color:var(--gray-400)">${item.rentalDays} ng�y � ${formatCurrency(item.pricePerDay)}</div>
+                        <div style="font-size:12px;color:var(--warning)">C?c: ${formatCurrency(item.depositAmount)}</div>
+                      </div>
+                      <button onclick="removeItem('${item.id}')" style="background:none;border:none;color:var(--error);font-size:20px;cursor:pointer;padding:4px" title="X�a">???</button>
+                    </div>
+                  </div>
+                </div>`).join('')}
+            </div>
+          </div>
+          <div>
+            <div class="cart-summary card" style="padding:24px">
+              <h3 style="font-size:18px;font-weight:700;margin-bottom:20px">T�m t?t don h�ng</h3>
+              <div class="cart-summary-row"><span>Ti?n thu� (${items.length} s?n ph?m)</span><span>${formatCurrency(totals.rentalTotal)}</span></div>
+              <div class="cart-summary-row deposit"><span>?? Ti?n d?t c?c</span><span>${formatCurrency(totals.depositTotal)}</span></div>
+              <div class="cart-summary-row total"><span>T?ng c?ng</span><span>${formatCurrency(totals.total)}</span></div>
+              <div style="font-size:12px;color:var(--gray-400);margin-top:8px;margin-bottom:20px">* Ti?n c?c s? du?c ho�n tr? sau khi tr? d? d�ng h?n</div>
+              <button class="btn btn-primary btn-full btn-lg" onclick="goCheckout()">Ti?n h�nh thanh to�n ?</button>
+              <a href="/customer/products.html" class="btn btn-secondary btn-full" style="margin-top:10px;text-align:center">? Ti?p t?c mua s?m</a>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function updateItem(itemId, field, value) {
+      const changes = {};
+      changes[field] = value;
+      CartModule.updateItem(session.userId, itemId, changes);
+      renderCart();
+    }
+
+    function removeItem(itemId) {
+      showConfirm('X�a s?n ph?m n�y kh?i gi? h�ng?', () => {
+        CartModule.removeItem(session.userId, itemId);
+        Toast.show('�� x�a s?n ph?m', 'success');
+        renderCart();
+      });
+    }
+
+    function goCheckout() {
+      const items = CartModule.getCart(session.userId);
+      if (!items.length) { Toast.show('Gi? h�ng tr?ng', 'warning'); return; }
+      window.location.href = '/customer/checkout.html';
+    }
+
+    renderCart();
+  </script>
+</body>
+</html>
+
+
+

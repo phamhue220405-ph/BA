@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi tiết bài viết - LuxRent Admin</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div class="topbar-title">📰 Chi tiết bài viết</div>
+        <div class="topbar-actions">
+          <button class="topbar-btn" onclick="history.back()">← Quay lại</button>
+        </div>
+      </div>
+      <div class="admin-content">
+        <div id="postDetailContainer">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Edit Modal (giống trang tạo bài viết) -->
+  <div id="editModal" class="modal-overlay" style="display:none">
+    <div class="modal" style="max-width:650px">
+      <div class="modal-header">
+        <div class="modal-title">Sửa bài viết</div>
+        <button class="modal-close" onclick="closeEditModal()">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Tiêu đề *</label>
+        <input type="text" id="pTitle" class="form-control" maxlength="120" placeholder="Tối đa 120 ký tự">
+      </div>
+      <div class="form-group">
+        <label>Nội dung *</label>
+        <div class="editor-toolbar" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;align-items:center">
+          <button type="button" class="btn btn-secondary" onclick="fmt('bold')"><b>B</b></button>
+          <button type="button" class="btn btn-secondary" onclick="fmt('italic')"><i>I</i></button>
+          <button type="button" class="btn btn-secondary" onclick="fmt('underline')"><u>U</u></button>
+          <select id="pFont" class="form-control" style="width:auto;min-width:150px" onchange="fmt('fontName', this.value)">
+            <option value="">Phông chữ</option>
+            <option value="Arial">Arial</option>
+            <option value="'Times New Roman'">Times New Roman</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Tahoma">Tahoma</option>
+            <option value="Courier New">Courier New</option>
+          </select>
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('pImgFile').click()">Chèn ảnh</button>
+          <input type="file" id="pImgFile" style="display:none" accept=".jpg,.jpeg,.png" multiple onchange="insertImgs(event)">
+        </div>
+        <div id="pContentEditor" class="rich-editor form-control" contenteditable="true"
+          style="min-height:220px;padding:14px;border:1px solid #d1d5db;border-radius:10px;background:#fff;overflow:auto;"></div>
+      </div>
+      <div class="form-group">
+        <label>Danh mục *</label>
+        <select id="pCategory" class="form-control"><option value="">-- Chọn danh mục --</option></select>
+      </div>
+      <div class="form-group">
+        <label>Trạng thái *</label>
+        <select id="pStatus" class="form-control">
+          <option value="visible">Hiện</option>
+          <option value="hidden">Ẩn</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Thẻ tags</label>
+        <input type="text" id="pTags" class="form-control" placeholder="marketing, khuyến mãi, sự kiện">
+      </div>
+      <div id="editError" class="alert alert-error" style="display:none"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeEditModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="saveEdit()" style="background:var(--admin-primary)">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/promotion.js"></script>
+  <script src="../assets/js/admin-common.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAdminAuth();
+    if (session) document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('posts', session);
+    const _canEdit = canEdit('posts', session?.role);
+
+    const POST_CATEGORIES = [
+      { id: 'news',      name: 'Tin tức' },
+      { id: 'promotion', name: 'Khuyến mại' },
+      { id: 'event',     name: 'Sự kiện' }
+    ];
+
+    const postId = getParam('id');
+
+    // ── Helpers ───────────────────────────────────────────────────────
+
+    function categoryName(id) {
+      const c = POST_CATEGORIES.find(c => c.id === id);
+      return c ? c.name : 'Chưa phân loại';
+    }
+
+    function creatorName(userId) {
+      const user = StorageService.getById('crb_users', userId);
+      if (user) return user.fullName || user.email || 'Người dùng';
+      const s = StorageService.getSession();
+      return s && s.userId === userId ? s.fullName || 'Người tạo' : 'Không xác định';
+    }
+
+    function getContentImages(html) {
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      return Array.from(div.querySelectorAll('img')).map(img => img.src);
+    }
+
+    function parseTags(value) {
+      return value.split(',').map(t => t.trim()).filter(Boolean);
+    }
+
+    function isValidImageUrl(url) {
+      return /\.(jpe?g|png)$/i.test(url);
+    }
+
+    function validatePostData(data) {
+      if (!data.title) return 'Vui lòng điền tiêu đề';
+      if (data.title.length > 120) return 'Tiêu đề không được vượt quá 120 ký tự';
+      if (!data.content || data.content.replace(/<[^>]+>/g, '').trim().length < 150)
+        return 'Nội dung phải tối thiểu 150 ký tự';
+      if (!data.categoryId) return 'Vui lòng chọn danh mục';
+      const bad = (data.images || []).find(src => src && src.startsWith('http') && !isValidImageUrl(src));
+      if (bad) return 'URL ảnh phải có định dạng jpg, jpeg hoặc png';
+      return null;
+    }
+
+    // ── Render detail ─────────────────────────────────────────────────
+
+    function renderDetail() {
+      const post = StorageService.getById('crb_posts', postId);
+      const container = document.getElementById('postDetailContainer');
+      if (!post || post.deleted) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Không tìm thấy bài viết</div></div>';
+        return;
+      }
+
+      container.innerHTML = `
+        <div style="background:var(--white);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow-sm);max-width:900px;margin:0 auto">
+          <div style="font-size:13px;color:var(--gray-400);margin-bottom:8px">
+            ${formatDate(post.createdAt)} · ${creatorName(post.createdBy)}
+          </div>
+          <h1 style="margin:0 0 12px;font-size:26px;line-height:1.3">${post.title}</h1>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+            <span style="background:var(--gray-100);color:var(--gray-700);padding:5px 12px;border-radius:999px;font-size:13px">${categoryName(post.categoryId)}</span>
+            <span class="status-badge status-${post.isPublished ? 'da_xac_nhan' : 'da_huy'}">${post.isPublished ? 'Hiện' : 'Ẩn'}</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px">
+            ${(post.tags || []).map(t => `<span style="background:var(--gray-100);color:var(--gray-600);padding:4px 10px;border-radius:999px;font-size:12px">${t}</span>`).join('')}
+          </div>
+          <div style="font-size:15px;color:var(--gray-700);line-height:1.8">${post.content || ''}</div>
+          ${_canEdit ? `
+          <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:28px;padding-top:20px;border-top:1px solid var(--gray-200)">
+            <button class="btn btn-danger" onclick="confirmDelete()" style="background:#ef4444">🗑 Xóa</button>
+            <button class="btn btn-primary" onclick="openEditModal()" style="background:var(--admin-primary)">✎ Sửa</button>
+          </div>` : ''}
+        </div>`;
+    }
+
+    // ── Edit modal ────────────────────────────────────────────────────
+
+    function populateCategoryOptions() {
+      document.getElementById('pCategory').innerHTML =
+        '<option value="">-- Chọn danh mục --</option>' +
+        POST_CATEGORIES.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    }
+
+    function openEditModal() {
+      const post = StorageService.getById('crb_posts', postId);
+      if (!post) return;
+      populateCategoryOptions();
+      document.getElementById('pTitle').value = post.title;
+      document.getElementById('pContentEditor').innerHTML = post.content || '';
+      document.getElementById('pCategory').value = post.categoryId || '';
+      document.getElementById('pStatus').value = post.isPublished ? 'visible' : 'hidden';
+      document.getElementById('pTags').value = (post.tags || []).join(', ');
+      document.getElementById('pFont').value = '';
+      document.getElementById('pImgFile').value = '';
+      document.getElementById('editError').style.display = 'none';
+      document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').style.display = 'none';
+    }
+
+    function fmt(command, value) {
+      document.getElementById('pContentEditor').focus();
+      document.execCommand(command, false, value || null);
+    }
+
+    function insertImgs(event) {
+      const files = event.target.files;
+      if (!files.length) return;
+      const promises = Array.from(files).map(file => new Promise((resolve, reject) => {
+        if (!/^image\/(jpeg|png)$/i.test(file.type)) { reject(new Error('Chỉ chấp nhận ảnh JPG/PNG')); return; }
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Không thể đọc ảnh'));
+        reader.readAsDataURL(file);
+      }));
+      Promise.all(promises).then(srcs => {
+        srcs.forEach(src => {
+          document.getElementById('pContentEditor').focus();
+          document.execCommand('insertImage', false, src);
+        });
+        event.target.value = '';
+      }).catch(err => {
+        document.getElementById('editError').textContent = err.message;
+        document.getElementById('editError').style.display = 'flex';
+      });
+    }
+
+    function saveEdit() {
+      const errEl = document.getElementById('editError');
+      const title = document.getElementById('pTitle').value.trim();
+      const content = document.getElementById('pContentEditor').innerHTML.trim();
+      const categoryId = document.getElementById('pCategory').value;
+      const isPublished = document.getElementById('pStatus').value === 'visible';
+      const tags = parseTags(document.getElementById('pTags').value);
+      const images = getContentImages(content);
+      const data = { title, content, categoryId, tags, images, isPublished };
+
+      const err = validatePostData(data);
+      if (err) { errEl.textContent = err; errEl.style.display = 'flex'; return; }
+
+      showConfirm('Cập nhật bài viết này?', () => {
+        const result = PromotionModule.updatePost(postId, data);
+        if (result.error) { errEl.textContent = result.error; errEl.style.display = 'flex'; return; }
+        Toast.show('Đã cập nhật bài viết', 'success');
+        closeEditModal();
+        renderDetail();
+      });
+    }
+
+    // ── Delete ────────────────────────────────────────────────────────
+
+    function confirmDelete() {
+      showConfirm('Xóa bài viết này?', () => {
+        PromotionModule.deletePost(postId);
+        Toast.show('Đã xóa bài viết', 'success');
+        window.location.href = '/admin/posts.html';
+      });
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────
+    renderDetail();
+  </script>
+</body>
+</html>

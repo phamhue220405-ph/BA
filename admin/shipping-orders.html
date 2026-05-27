@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đơn vận chuyển - LuxRent Admin</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <style>
+    .delivery-select {
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--gray-200);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+      background: var(--white);
+      min-width: 160px;
+    }
+    .delivery-select:focus { border-color: var(--admin-primary); }
+    .delivery-select.status-cho_xac_nhan  { color: #d97706; border-color: #fde68a; background: #fffbeb; }
+    .delivery-select.status-dang_chuan_bi { color: #2563eb; border-color: #bfdbfe; background: #eff6ff; }
+    .delivery-select.status-dang_giao     { color: #7c3aed; border-color: #ddd6fe; background: #f5f3ff; }
+    .delivery-select.status-da_giao       { color: #16a34a; border-color: #bbf7d0; background: #f0fdf4; }
+    .delivery-select.status-da_huy        { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+  </style>
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div class="topbar-title">📬 Đơn vận chuyển</div>
+      </div>
+      <div class="admin-content">
+        <!-- Sub-nav -->
+        <div style="display:flex;gap:8px;margin-bottom:20px">
+          <a href="/admin/shipping.html" class="btn btn-secondary btn-sm">🚚 Phương thức</a>
+          <a href="/admin/shipping-costs.html" class="btn btn-secondary btn-sm">💰 Chi phí</a>
+          <a href="/admin/shipping-orders.html" class="btn btn-primary btn-sm" style="background:var(--admin-primary)">📬 Đơn vận chuyển</a>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid" id="statsGrid" style="margin-bottom:24px"></div>
+
+        <!-- Filters -->
+        <div class="table-container">
+          <div class="table-header">
+            <div class="table-search">
+              <input type="text" id="searchInput" placeholder="Tìm mã đơn, mã vận đơn, tên khách, SĐT..." oninput="applyFilters()">
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <select id="deliveryStatusFilter" class="form-control" style="width:180px;padding:8px 12px;font-size:13px" onchange="applyFilters()">
+                <option value="">Tất cả trạng thái</option>
+                <option value="cho_xac_nhan">Chờ xác nhận</option>
+                <option value="dang_chuan_bi">Đang chuẩn bị</option>
+                <option value="dang_giao">Đang giao</option>
+                <option value="da_giao">Đã giao</option>
+                <option value="da_huy">Đã hủy</option>
+              </select>
+              <select id="methodFilter" class="form-control" style="width:180px;padding:8px 12px;font-size:13px" onchange="applyFilters()">
+                <option value="">Tất cả phương thức</option>
+              </select>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Mã đơn</th>
+                  <th>Mã vận đơn</th>
+                  <th>Khách hàng</th>
+                  <th>Địa chỉ giao</th>
+                  <th>Phương thức VC</th>
+                  <th>Phí VC</th>
+                  <th>Trạng thái giao hàng</th>
+                  <th>Ngày tạo</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTable"></tbody>
+            </table>
+          </div>
+          <div id="pagination"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Confirm Receipt Modal -->
+  <div id="receiptModal" class="modal-overlay" style="display:none">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-header">
+        <div class="modal-title">✅ Xác nhận giao hàng thành công</div>
+        <button class="modal-close" onclick="closeReceiptModal()">✕</button>
+      </div>
+      <input type="hidden" id="receiptOrderId">
+      <div id="receiptInfo" style="background:var(--gray-50);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px;font-size:14px"></div>
+      <div class="alert alert-info">ℹ️ Sau khi xác nhận, trạng thái đơn hàng sẽ chuyển sang <strong>Đang thuê</strong>.</div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeReceiptModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="confirmReceipt()" style="background:var(--success)">✅ Xác nhận đã giao</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/order.js"></script>
+  <script src="../assets/js/shipping.js"></script>
+  <script src="../assets/js/admin-common.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAdminAuth(['admin','manager','warehouse','sales']);
+    if (session) document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('shipping-orders', session);
+    const _canEdit = canEdit('shipping-orders', session?.role);
+
+    // Populate method filter
+    const allMethods = ShippingModule.getAll();
+    const methodSel = document.getElementById('methodFilter');
+    allMethods.forEach(m => {
+      const o = document.createElement('option');
+      o.value = m.id; o.textContent = m.name;
+      methodSel.appendChild(o);
+    });
+
+    const DELIVERY_STATUSES = [
+      { value: 'cho_xac_nhan',  label: 'Chờ xác nhận' },
+      { value: 'dang_chuan_bi', label: 'Đang chuẩn bị' },
+      { value: 'dang_giao',     label: 'Đang giao hàng' },
+      { value: 'da_giao',       label: 'Đã giao hàng' },
+      { value: 'da_huy',        label: 'Đã hủy' },
+    ];
+
+    let currentPage = 1, allOrders = [];
+
+    function applyFilters() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const deliveryStatus = document.getElementById('deliveryStatusFilter').value;
+      const methodId = document.getElementById('methodFilter').value;
+
+      allOrders = StorageService.getAll('crb_rental_orders').filter(o => {
+        if (o.status === 'da_huy') return false;
+        if (deliveryStatus && (o.deliveryStatus || 'cho_xac_nhan') !== deliveryStatus) return false;
+        if (methodId && o.shippingMethodId !== methodId) return false;
+        if (search && !o.orderRef?.toLowerCase().includes(search)
+          && !o.shippingTrackingRef?.toLowerCase().includes(search)
+          && !o.customerName?.toLowerCase().includes(search)
+          && !o.deliveryInfo?.phone?.includes(search)) return false;
+        return true;
+      }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      currentPage = 1;
+      renderStats();
+      renderTable();
+    }
+
+    function renderStats() {
+      const all = StorageService.getAll('crb_rental_orders').filter(o => o.status !== 'da_huy');
+      document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div><div class="stat-value">${all.filter(o => (o.deliveryStatus||'cho_xac_nhan') === 'cho_xac_nhan').length}</div><div class="stat-label">Chờ xác nhận</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">📦</div><div><div class="stat-value">${all.filter(o => o.deliveryStatus === 'dang_chuan_bi').length}</div><div class="stat-label">Đang chuẩn bị</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">🚚</div><div><div class="stat-value">${all.filter(o => o.deliveryStatus === 'dang_giao').length}</div><div class="stat-label">Đang giao</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-value">${all.filter(o => o.deliveryStatus === 'da_giao').length}</div><div class="stat-label">Đã giao</div></div></div>`;
+    }
+
+    function renderTable() {
+      const paged = paginate(allOrders, currentPage);
+      const tbody = document.getElementById('ordersTable');
+
+      if (!paged.items.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--gray-400)">Không có đơn vận chuyển</td></tr>';
+        renderPagination('pagination', paged, 'goPage');
+        return;
+      }
+
+      tbody.innerHTML = paged.items.map(o => {
+        const method = o.shippingMethodId ? ShippingModule.getById(o.shippingMethodId) : null;
+        const deliveryStatus = o.deliveryStatus || 'cho_xac_nhan';
+
+        // Build dropdown options
+        const options = DELIVERY_STATUSES.map(s =>
+          `<option value="${s.value}" ${s.value === deliveryStatus ? 'selected' : ''}>${s.label}</option>`
+        ).join('');
+
+        return `<tr>
+          <td>
+            <a href="/admin/order-detail.html?id=${o.id}" style="color:var(--admin-primary);font-weight:600">${o.orderRef}</a>
+          </td>
+          <td style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${o.shippingTrackingRef || ''}">${o.shippingTrackingRef || '—'}</td>
+          <td>
+            <div style="font-weight:500">${o.customerName}</div>
+            <div style="font-size:12px;color:var(--gray-400)">${o.deliveryInfo?.phone || ''}</div>
+          </td>
+          <td style="font-size:13px;max-width:180px">
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${o.deliveryInfo?.address || ''}">${o.deliveryInfo?.address || '-'}</div>
+          </td>
+          <td style="font-size:13px">${method ? method.name : '<span style="color:var(--gray-400)">—</span>'}</td>
+          <td style="font-weight:600">${o.shippingCost ? formatCurrency(o.shippingCost) : '—'}</td>
+          <td>
+            <select
+              class="delivery-select status-${deliveryStatus}"
+              onchange="onStatusChange(this, '${o.id}')"
+              ${!_canEdit ? 'disabled title="Bạn không có quyền chỉnh sửa"' : ''}
+            >${options}</select>
+          </td>
+          <td style="font-size:12px;color:var(--gray-500)">${formatDate(o.createdAt)}</td>
+          <td>
+            <a href="/admin/order-detail.html?id=${o.id}" class="action-btn action-btn-view">Xem</a>
+          </td>
+        </tr>`;
+      }).join('');
+
+      renderPagination('pagination', paged, 'goPage');
+    }
+
+    function goPage(p) { currentPage = p; renderTable(); }
+
+    function onStatusChange(selectEl, orderId) {
+      const newStatus = selectEl.value;
+      const oldStatus = selectEl.dataset.prev || selectEl.querySelector('[selected]')?.value;
+
+      // If changing to "Đã giao" → require confirmation modal
+      if (newStatus === 'da_giao') {
+        // Revert visual until confirmed
+        selectEl.value = oldStatus || 'dang_giao';
+        openReceiptModal(orderId, selectEl);
+        return;
+      }
+
+      // Update class for color
+      selectEl.className = `delivery-select status-${newStatus}`;
+      selectEl.dataset.prev = newStatus;
+
+      StorageService.update('crb_rental_orders', orderId, {
+        deliveryStatus: newStatus,
+        updatedAt: new Date().toISOString()
+      });
+      showSuccess('Cập nhật trạng thái đơn hàng thành công!', () => renderStats());
+    }
+
+    function openReceiptModal(orderId, triggerSelect) {
+      const order = StorageService.getById('crb_rental_orders', orderId);
+      document.getElementById('receiptOrderId').value = orderId;
+      // Store reference to select element via data attribute on modal
+      document.getElementById('receiptModal').dataset.selectId = orderId;
+      document.getElementById('receiptInfo').innerHTML = `
+        <div style="margin-bottom:8px"><strong>${order.orderRef}</strong></div>
+        <div>👤 ${order.customerName} — ${order.deliveryInfo?.phone || ''}</div>
+        <div>📍 ${order.deliveryInfo?.address || ''}</div>
+        <div style="margin-top:8px;font-weight:600;color:var(--admin-primary)">Tổng tiền: ${formatCurrency(order.totalAmount)}</div>`;
+      document.getElementById('receiptModal').style.display = 'flex';
+    }
+
+    function closeReceiptModal() {
+      document.getElementById('receiptModal').style.display = 'none';
+      // Re-render to reset dropdown state
+      renderTable();
+    }
+
+    function confirmReceipt() {
+      const orderId = document.getElementById('receiptOrderId').value;
+      StorageService.update('crb_rental_orders', orderId, {
+        deliveryStatus: 'da_giao',
+        status: 'dang_thue',
+        updatedAt: new Date().toISOString()
+      });
+      document.getElementById('receiptModal').style.display = 'none';
+      showSuccess('Xác nhận giao hàng thành công! Đơn chuyển sang Đang thuê.', () => applyFilters());
+    }
+
+    applyFilters();
+  </script>
+</body>
+</html>
+
+

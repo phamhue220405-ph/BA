@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi tiết đơn hàng - LuxRent Admin</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div class="topbar-title">Chi tiết đơn hàng</div>
+        <div class="topbar-actions">
+          <a href="/admin/orders.html" class="topbar-btn" style="background:var(--gray-100);color:var(--gray-700)">← Quay lại</a>
+        </div>
+      </div>
+      <div class="admin-content" id="orderContent"><div class="spinner"></div></div>
+    </main>
+  </div>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/product.js"></script>
+  <script src="../assets/js/order.js"></script>
+  <script src="../assets/js/inventory.js"></script>
+  <script src="../assets/js/admin-common.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAdminAuth(['admin','manager','accountant','warehouse','sales']);
+    if (session) document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('orders', session);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('id');
+
+    const STATUS_SEQUENCE = ['cho_xac_nhan','da_xac_nhan','dang_giao','dang_thue','da_tra_do'];
+
+    function renderOrderDetail() {
+      const order = OrderModule.getRentalOrderById(orderId);
+      if (!order) { document.getElementById('orderContent').innerHTML = '<div class="empty-state"><div class="empty-state-icon">😕</div><div class="empty-state-title">Không tìm thấy đơn hàng</div></div>'; return; }
+
+      const currentIdx = STATUS_SEQUENCE.indexOf(order.status);
+      const nextStatus = currentIdx >= 0 && currentIdx < STATUS_SEQUENCE.length - 1 ? STATUS_SEQUENCE[currentIdx + 1] : null;
+
+      // Check conflicts
+      const conflicts = [];
+      (order.items || []).forEach(item => {
+        const c = InventoryModule.checkConflicts(item.productId, item.rentalStartDate, item.rentalEndDate);
+        if (c.length > 1) conflicts.push({ productName: item.productName, count: c.length });
+      });
+
+      document.getElementById('orderContent').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 340px;gap:24px">
+          <div>
+            ${conflicts.length ? `<div class="alert alert-warning">⚠️ Xung đột lịch: ${conflicts.map(c => `${c.productName} (${c.count} đơn)`).join(', ')}</div>` : ''}
+
+            <div class="admin-form-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <div>
+                  <h2 style="font-size:20px;font-weight:700">${order.orderRef}</h2>
+                  <div style="font-size:13px;color:var(--gray-400)">Tạo ngày ${formatDate(order.createdAt)}</div>
+                </div>
+                <span class="status-badge status-${order.status}" style="font-size:14px;padding:6px 16px">${STATUS_LABELS[order.status]}</span>
+              </div>
+
+              <!-- Status Actions -->
+              ${order.status !== 'da_huy' && order.status !== 'da_tra_do' ? `
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+                ${nextStatus ? `<button class="btn btn-primary btn-sm" onclick="advanceStatus('${nextStatus}')" style="background:var(--admin-primary)">→ Chuyển sang: ${STATUS_LABELS[nextStatus]}</button>` : ''}
+                ${['cho_xac_nhan','da_xac_nhan'].includes(order.status) ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder()">Hủy đơn</button>` : ''}
+              </div>` : ''}
+            </div>
+
+            <!-- Items -->
+            <div class="admin-form-card">
+              <h3>Sản phẩm thuê</h3>
+              ${(order.items || []).length === 0 ? '<p style="color:var(--gray-400)">Chưa có sản phẩm</p>' :
+                (order.items || []).map(i => {
+                  const stock = InventoryModule.getStock(i.productId, i.size);
+                  return `<div style="display:flex;gap:16px;padding:12px 0;border-bottom:1px solid var(--gray-100)">
+                    <img src="${i.productImage || 'https://via.placeholder.com/60x80'}" style="width:60px;height:80px;object-fit:cover;border-radius:6px">
+                    <div style="flex:1">
+                      <div style="font-weight:600">${i.productName}</div>
+                      <div style="font-size:13px;color:var(--gray-500)">Size: ${i.size} | Màu: ${i.color}</div>
+                      <div style="font-size:13px;color:var(--gray-500)">${formatDate(i.rentalStartDate)} → ${formatDate(i.rentalEndDate)} (${i.rentalDays} ngày)</div>
+                      <div style="font-size:13px;margin-top:4px">
+                        Tồn kho: <span style="font-weight:600;color:${stock && stock.quantity > 0 ? 'var(--success)' : 'var(--error)'}">${stock ? stock.quantity : 'N/A'}</span>
+                        ${stock?.conditionNotes ? ` | Tình trạng: ${stock.conditionNotes}` : ''}
+                      </div>
+                    </div>
+                    <div style="font-weight:700;color:var(--admin-primary)">${formatCurrency(i.subtotal)}</div>
+                  </div>`;
+                }).join('')}
+            </div>
+
+            <!-- Condition Notes -->
+            <div class="admin-form-card">
+              <h3>Ghi nhận tình trạng trang phục</h3>
+              <div class="form-group"><label>Ghi chú tình trạng</label><textarea id="conditionNotes" class="form-control" rows="3" placeholder="Mô tả tình trạng trang phục..."></textarea></div>
+              <button class="btn btn-secondary btn-sm" onclick="saveCondition()">💾 Lưu ghi chú</button>
+            </div>
+
+            <!-- Status History -->
+            <div class="admin-form-card">
+              <h3>Lịch sử trạng thái</h3>
+              ${(order.statusHistory || []).map(h => `
+                <div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:13px">
+                  <span class="status-badge status-${h.status}">${STATUS_LABELS[h.status]||h.status}</span>
+                  <span style="color:var(--gray-500)">${new Date(h.timestamp).toLocaleString('vi-VN')}</span>
+                </div>`).join('')}
+            </div>
+          </div>
+
+          <!-- Sidebar -->
+          <div>
+            <div class="admin-form-card">
+              <h3>Thông tin khách hàng</h3>
+              <div style="font-size:14px;display:grid;gap:8px">
+                <div>👤 <strong>${order.customerName}</strong></div>
+                <div>📞 ${order.deliveryInfo?.phone || '-'}</div>
+                <div>📍 ${order.deliveryInfo?.address || '-'}</div>
+                ${order.deliveryInfo?.preferredDeliveryDate ? `<div>📅 Giao: ${formatDate(order.deliveryInfo.preferredDeliveryDate)}</div>` : ''}
+              </div>
+            </div>
+
+            <div class="admin-form-card">
+              <h3>Thanh toán</h3>
+              <div style="font-size:14px;display:grid;gap:6px">
+                <div style="display:flex;justify-content:space-between"><span>Tiền thuê:</span><span>${formatCurrency(order.subtotal)}</span></div>
+                <div style="display:flex;justify-content:space-between"><span>Tiền cọc:</span><span style="color:var(--warning)">${formatCurrency(order.depositTotal)}</span></div>
+                ${order.shippingCost ? `<div style="display:flex;justify-content:space-between"><span>Vận chuyển:</span><span>${formatCurrency(order.shippingCost)}</span></div>` : ''}
+                ${order.discountAmount ? `<div style="display:flex;justify-content:space-between;color:var(--success)"><span>Giảm giá:</span><span>-${formatCurrency(order.discountAmount)}</span></div>` : ''}
+                <hr style="border:none;border-top:1px solid var(--gray-200)">
+                <div style="display:flex;justify-content:space-between;font-weight:700;font-size:16px"><span>Tổng:</span><span style="color:var(--admin-primary)">${formatCurrency(order.totalAmount)}</span></div>
+                <div>TT: <span class="status-badge status-${order.paymentStatus === 'paid' ? 'da_xac_nhan' : 'cho_xac_nhan'}">${order.paymentStatus === 'paid' ? '✅ Đã TT' : '⏳ Chờ TT'}</span></div>
+                <div>Cọc: <span class="status-badge status-${order.depositStatus === 'refunded' ? 'da_tra_do' : 'cho_xac_nhan'}">${order.depositStatus === 'refunded' ? '✅ Đã hoàn' : '🔒 Đang giữ'}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function advanceStatus(newStatus) {
+      showConfirm(`Chuyển trạng thái sang "${STATUS_LABELS[newStatus]}"?`, () => {
+        OrderModule.updateRentalStatus(orderId, newStatus, session.userId);
+        Toast.show('Đã cập nhật trạng thái', 'success');
+        renderOrderDetail();
+      });
+    }
+
+    function cancelOrder() {
+      showConfirm('Hủy đơn hàng này?', () => {
+        OrderModule.cancelRentalOrder(orderId, session.userId);
+        Toast.show('Đã hủy đơn hàng', 'success');
+        renderOrderDetail();
+      });
+    }
+
+    function saveCondition() {
+      const notes = document.getElementById('conditionNotes').value.trim();
+      const order = OrderModule.getRentalOrderById(orderId);
+      (order?.items || []).forEach(i => InventoryModule.recordCondition(i.productId, i.size, notes, ''));
+      Toast.show('Đã lưu ghi chú tình trạng', 'success');
+    }
+
+    renderOrderDetail();
+  </script>
+</body>
+</html>
+
+
