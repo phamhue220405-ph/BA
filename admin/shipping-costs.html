@@ -263,26 +263,37 @@
       if (isNaN(amount) || amount < 0) { errEl.textContent = 'Chi phí không hợp lệ'; errEl.style.display = 'flex'; return; }
       if (isNaN(days) || days < 1) { errEl.textContent = 'Thời gian giao không hợp lệ'; errEl.style.display = 'flex'; return; }
 
+      // Check for duplicate BEFORE showing confirm dialog
+      const method = ShippingModule.getById(methodId);
+      const costs = [...(method.costs || [])];
+      const exists = costs.some(c => c.region === region);
+      const isEdit = !!editMethodId;
+      // If creating new and same region exists -> duplicate
+      if (!isEdit && exists) { errEl.textContent = 'Chi phí cho khu vực này đã tồn tại'; errEl.style.display = 'flex'; return; }
+      // If editing
+      if (isEdit) {
+        // If method unchanged
+        if (editMethodId === methodId) {
+          // If changed region to another existing region -> duplicate
+          if (region !== editRegion && exists) { errEl.textContent = 'Chi phí cho khu vực này đã tồn tại'; errEl.style.display = 'flex'; return; }
+        } else {
+          // Method changed while editing: ensure target method doesn't already have the region
+          if (exists) { errEl.textContent = 'Chi phí cho khu vực này đã tồn tại'; errEl.style.display = 'flex'; return; }
+        }
+      }
+
       showConfirm('Có muốn cập nhật chi phí vận chuyển không?', () => {
         const method = ShippingModule.getById(methodId);
         const costs = [...(method.costs || [])];
-        const exists = costs.some(c => c.region === region);
         const isEdit = !!editMethodId;
-        // Duplicate checks: if creating new and same region exists -> error
-        if (!isEdit && exists) { errEl.textContent = 'Chi phí cho khu vực này đã tồn tại'; errEl.style.display = 'flex'; return; }
-        // If editing
         if (isEdit) {
-          // If method unchanged
+          // If method unchanged, replace the original entry
           if (editMethodId === methodId) {
-            // If changed region to another existing region -> duplicate
-            if (region !== editRegion && exists) { errEl.textContent = 'Chi phí cho khu vực này đã tồn tại'; errEl.style.display = 'flex'; return; }
-            // Replace the original entry (find by editRegion)
             const idxOriginal = costs.findIndex(c => c.region === editRegion);
             if (idxOriginal >= 0) costs.splice(idxOriginal, 1);
             costs.push({ region, cost: amount, estimatedDays: days });
           } else {
-            // Method changed while editing: ensure target method doesn't already have the region
-            if (exists) { errEl.textContent = 'Chi phí cho khu vực này đã tồn tại'; errEl.style.display = 'flex'; return; }
+            // Method changed while editing
             costs.push({ region, cost: amount, estimatedDays: days });
           }
         } else {

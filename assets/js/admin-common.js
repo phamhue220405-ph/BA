@@ -35,7 +35,20 @@ var ROLE_LABELS_VI = {
   warehouse: 'Nhân viên kho', sales: 'Nhân viên bán hàng', marketing: 'Marketing'
 };
 
+function normalizeAdminSession(session) {
+  if (!session || !session.userId) return session;
+  const user = StorageService.getById('crb_users', session.userId);
+  if (!user) return session;
+  if (user.fullName && user.fullName !== session.fullName) {
+    const updatedSession = { ...session, fullName: user.fullName, email: user.email || session.email };
+    StorageService.setSession(updatedSession);
+    return updatedSession;
+  }
+  return session;
+}
+
 function renderAdminSidebar(activeId, session) {
+  session = normalizeAdminSession(session);
   var shippingOpen   = SHIPPING_IDS.indexOf(activeId) !== -1;
   var promotionsOpen = PROMO_IDS.indexOf(activeId) !== -1;
   var role = session.role;

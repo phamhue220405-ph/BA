@@ -418,6 +418,13 @@
         regions: regions,
         description: document.getElementById('sDesc').value.trim()
       };
+      // Check for duplicate name before showing confirm
+      const allMethods = ShippingModule.getAll();
+      const isDuplicate = id 
+        ? allMethods.some(m => m.id !== id && m.name.toLowerCase() === name.toLowerCase())
+        : allMethods.some(m => m.name.toLowerCase() === name.toLowerCase());
+      if (isDuplicate) { errEl.textContent = 'Phương thức vận chuyển đã tồn tại'; errEl.style.display = 'flex'; return; }
+      
       showConfirm(id ? 'Cập nhật phương thức vận chuyển?' : 'Thêm phương thức vận chuyển mới?', () => {
         const result = id ? ShippingModule.update(id, data) : ShippingModule.create(data);
         if (result.error) { errEl.textContent = result.error; errEl.style.display = 'flex'; return; }

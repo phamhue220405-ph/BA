@@ -1,5 +1,37 @@
 // Seed initial data
+function normalizeStaffNames(users) {
+  const mapping = {
+    u_manager: { fullName: 'Phạm Thu Hà', address: 'Cửa hàng cho thuê trang phục Diệu Linh' },
+    u_accountant: { fullName: 'Phạm Phương Thảo', address: 'Cửa hàng cho thuê trang phục Diệu Linh' },
+    u_warehouse: { fullName: 'Lôi Thị Hương', address: 'Cửa hàng cho thuê trang phục Diệu Linh' },
+    u_sales: { fullName: 'Bùi Thiện Phúc', address: 'Cửa hàng cho thuê trang phục Diệu Linh' },
+    u_marketing: { fullName: 'Hoàng Minh Thu', address: 'Cửa hàng cho thuê trang phục Diệu Linh' },
+  };
+  let changed = false;
+  users.forEach(u => {
+    if (mapping[u.id]) {
+      Object.assign(u, mapping[u.id]);
+      changed = true;
+    } else if (u.fullName === 'Nguyễn Thị Quản Lý') {
+      Object.assign(u, mapping.u_manager);
+      changed = true;
+    }
+  });
+  return changed;
+}
+
 function seedData() {
+  const existingUsersData = localStorage.getItem('crb_users');
+  if (existingUsersData) {
+    try {
+      const existingUsers = JSON.parse(existingUsersData);
+      if (Array.isArray(existingUsers) && normalizeStaffNames(existingUsers)) {
+        localStorage.setItem('crb_users', JSON.stringify(existingUsers));
+      }
+    } catch (err) {
+      console.warn('[Seed] Could not parse existing users for normalization', err);
+    }
+  }
   if (localStorage.getItem('crb_seeded')) return;
 
   // Categories
@@ -36,10 +68,11 @@ function seedData() {
   // Users
   const users = [
     { id: 'u_admin', fullName: 'Quản trị viên', email: 'admin@store.com', phone: '0901000001', passwordHash: btoa('Admin@123_crb_salt'), role: 'admin', address: '123 Đường ABC, TP.HCM', avatar: '', loyaltyPoints: 0, bankAccount: { bankName: '', accountNumber: '' }, isActive: true, deleted: false, createdAt: new Date().toISOString() },
-    { id: 'u_manager', fullName: 'Nguyễn Thị Quản Lý', email: 'manager@store.com', phone: '0901000002', passwordHash: btoa('Manager@123_crb_salt'), role: 'manager', address: '', avatar: '', loyaltyPoints: 0, bankAccount: { bankName: '', accountNumber: '' }, isActive: true, deleted: false, createdAt: new Date().toISOString() },
-    { id: 'u_sales', fullName: 'Trần Văn Bán Hàng', email: 'sales@store.com', phone: '0901000003', passwordHash: btoa('Sales@123_crb_salt'), role: 'sales', address: '', avatar: '', loyaltyPoints: 0, bankAccount: { bankName: '', accountNumber: '' }, isActive: true, deleted: false, createdAt: new Date().toISOString() },
-    { id: 'u_warehouse', fullName: 'Lê Thị Kho', email: 'warehouse@store.com', phone: '0901000004', passwordHash: btoa('Warehouse@123_crb_salt'), role: 'warehouse', address: '', avatar: '', loyaltyPoints: 0, bankAccount: { bankName: '', accountNumber: '' }, isActive: true, deleted: false, createdAt: new Date().toISOString() },
-    { id: 'u_marketing', fullName: 'Phạm Văn Marketing', email: 'marketing@store.com', phone: '0901000005', passwordHash: btoa('Marketing@123_crb_salt'), role: 'marketing', address: '', avatar: '', loyaltyPoints: 0, bankAccount: { bankName: '', accountNumber: '' }, isActive: true, deleted: false, createdAt: new Date().toISOString() },
+    { id: 'u_manager', fullName: 'Phạm Thu Hà', email: 'manager@store.com', phone: '0901000002', passwordHash: btoa('Manager@123_crb_salt'), role: 'manager', address: 'Cửa hàng cho thuê trang phục Diệu Linh', avatar: '', loyaltyPoints: 0, bankAccount: { bankName: '', accountNumber: '' }, isActive: true, deleted: false, createdAt: new Date().toISOString() },
+    { id: 'u_accountant', fullName: 'Phạm Phương Thảo', email: 'accountant@store.com', phone: '0901000006', passwordHash: btoa('Accountant@123_crb_salt'), role: 'accountant', address: 'Cửa hàng cho thuê trang phục Diệu Linh', avatar: '', loyaltyPoints: 0, bankAccount: { bankName: '', accountNumber: '' }, isActive: true, deleted: false, createdAt: new Date().toISOString() },
+    { id: 'u_warehouse', fullName: 'Lôi Thị Hương', email: 'warehouse@store.com', phone: '0901000004', passwordHash: btoa('Warehouse@123_crb_salt'), role: 'warehouse', address: 'Cửa hàng cho thuê trang phục Diệu Linh', avatar: '', loyaltyPoints: 0, bankAccount: { bankName: '', accountNumber: '' }, isActive: true, deleted: false, createdAt: new Date().toISOString() },
+    { id: 'u_sales', fullName: 'Bùi Thiện Phúc', email: 'sales@store.com', phone: '0901000003', passwordHash: btoa('Sales@123_crb_salt'), role: 'sales', address: 'Cửa hàng cho thuê trang phục Diệu Linh', avatar: '', loyaltyPoints: 0, bankAccount: { bankName: '', accountNumber: '' }, isActive: true, deleted: false, createdAt: new Date().toISOString() },
+    { id: 'u_marketing', fullName: 'Hoàng Minh Thu', email: 'marketing@store.com', phone: '0901000005', passwordHash: btoa('Marketing@123_crb_salt'), role: 'marketing', address: 'Cửa hàng cho thuê trang phục Diệu Linh', avatar: '', loyaltyPoints: 0, bankAccount: { bankName: '', accountNumber: '' }, isActive: true, deleted: false, createdAt: new Date().toISOString() },
     { id: 'u_customer', fullName: 'Nguyễn Văn Khách', email: 'customer@test.com', phone: '0901234567', passwordHash: btoa('Test@123_crb_salt'), role: 'customer', address: '456 Đường XYZ, TP.HCM', avatar: '', loyaltyPoints: 150, bankAccount: { bankName: 'Vietcombank', accountNumber: '1234567890' }, isActive: true, deleted: false, createdAt: new Date().toISOString() },
   ];
   localStorage.setItem('crb_users', JSON.stringify(users));
