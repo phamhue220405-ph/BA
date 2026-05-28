@@ -37,7 +37,7 @@
           </div>
           <div style="overflow-x:auto">
             <table class="admin-table">
-              <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Tổng tiền</th><th>Thu phí COD</th><th>Trạng thái thanh toán</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
+              <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Tổng tiền</th><th>Trạng thái thanh toán</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
               <tbody id="ordersTable"></tbody>
             </table>
           </div>
@@ -126,7 +126,7 @@
         const paged = paginate(allOrders, currentPage);
         const tbody = document.getElementById('ordersTable');
         if (!paged.items.length) {
-          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--gray-400)">Không có đơn hàng nào</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray-400)">Không có đơn hàng nào</td></tr>';
         } else {
           tbody.innerHTML = paged.items.map(o => `
             <tr>
@@ -134,7 +134,6 @@
               <td><div style="font-weight:500">${o.customerName}</div><div style="font-size:12px;color:var(--gray-400)">${o.deliveryInfo?.phone || ''}</div></td>
               <td>${(o.items||[]).length} sản phẩm</td>
               <td style="font-weight:600">${formatCurrency(o.totalAmount)}</td>
-              <td style="font-weight:600">${formatCurrency(o.codFee || 0)}</td>
               <td><span class="status-badge status-${o.paymentStatus || 'pending'}">${STATUS_LABELS[o.paymentStatus || 'pending'] || o.paymentStatus || 'Chưa thanh toán'}</span></td>
               <td><span class="status-badge status-${o.status}">${STATUS_LABELS[o.status]||o.status}</span></td>
               <td>${formatDate(o.createdAt)}</td>
