@@ -169,11 +169,27 @@
         return;
       }
       const label = STATUS_LABELS[newStatus] || newStatus;
+
+      // Map trạng thái đơn → trạng thái vận chuyển
+      const deliveryStatusMap = {
+        'cho_xac_nhan': 'cho_xac_nhan',
+        'da_xac_nhan':  'dang_chuan_bi',
+        'dang_giao':    'dang_giao',
+        'dang_thue':    'da_giao',
+        'da_tra_do':    'da_tra_do',
+        'da_huy':       'da_huy',
+      };
+
       showConfirm(`Cập nhật trạng thái đơn hàng sang "${label}"?`, () => {
         if (newStatus === 'da_huy') {
           OrderModule.cancelRentalOrder(orderId, session.userId);
         } else {
           OrderModule.updateRentalStatus(orderId, newStatus, session.userId);
+        }
+        // Đồng bộ deliveryStatus
+        const newDeliveryStatus = deliveryStatusMap[newStatus];
+        if (newDeliveryStatus) {
+          StorageService.update('crb_rental_orders', orderId, { deliveryStatus: newDeliveryStatus });
         }
         renderOrderDetail();
         showSuccess(`Cập nhật trạng thái thành công!`);

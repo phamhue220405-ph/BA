@@ -158,14 +158,19 @@
 
     let currentPage = 1, allOrders = [];
 
+    function getOrderDeliveryStatus(order) {
+      return order.deliveryStatus || OrderModule.getDeliveryStatusForOrderStatus(order.status);
+    }
+
     function applyFilters() {
       const search = document.getElementById('searchInput').value.toLowerCase();
       const deliveryStatus = document.getElementById('deliveryStatusFilter').value;
       const methodId = document.getElementById('methodFilter').value;
 
       allOrders = StorageService.getAll('crb_rental_orders').filter(o => {
+        const actualDeliveryStatus = getOrderDeliveryStatus(o);
         if (o.status === 'da_huy') return false;
-        if (deliveryStatus && (o.deliveryStatus || 'cho_xac_nhan') !== deliveryStatus) return false;
+        if (deliveryStatus && actualDeliveryStatus !== deliveryStatus) return false;
         if (methodId && o.shippingMethodId !== methodId) return false;
         if (search && !o.orderRef?.toLowerCase().includes(search)
           && !o.customerName?.toLowerCase().includes(search)
@@ -181,10 +186,10 @@
     function renderStats() {
       const all = StorageService.getAll('crb_rental_orders').filter(o => o.status !== 'da_huy');
       document.getElementById('statsGrid').innerHTML = `
-        <div class="stat-card"><div class="stat-icon orange">⏳</div><div><div class="stat-value">${all.filter(o => (o.deliveryStatus||'cho_xac_nhan') === 'cho_xac_nhan').length}</div><div class="stat-label">Chờ xác nhận</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">📦</div><div><div class="stat-value">${all.filter(o => o.deliveryStatus === 'dang_chuan_bi').length}</div><div class="stat-label">Đang chuẩn bị</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">🚚</div><div><div class="stat-value">${all.filter(o => o.deliveryStatus === 'dang_giao').length}</div><div class="stat-label">Đang giao</div></div></div>
-        <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-value">${all.filter(o => o.deliveryStatus === 'da_giao').length}</div><div class="stat-label">Đã giao</div></div></div>`;
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div><div class="stat-value">${all.filter(o => getOrderDeliveryStatus(o) === 'cho_xac_nhan').length}</div><div class="stat-label">Chờ xác nhận</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">📦</div><div><div class="stat-value">${all.filter(o => getOrderDeliveryStatus(o) === 'dang_chuan_bi').length}</div><div class="stat-label">Đang chuẩn bị</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">🚚</div><div><div class="stat-value">${all.filter(o => getOrderDeliveryStatus(o) === 'dang_giao').length}</div><div class="stat-label">Đang giao</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-value">${all.filter(o => getOrderDeliveryStatus(o) === 'da_giao').length}</div><div class="stat-label">Đã giao</div></div></div>`;
     }
 
     function renderTable() {
@@ -199,6 +204,8 @@
 
       tbody.innerHTML = paged.items.map(o => {
         const method = o.shippingMethodId ? ShippingModule.getById(o.shippingMethodId) : null;
+        const deliveryStatus = getOrderDeliveryStatus(o);
+        const statusLabel = DELIVERY_STATUSES.find(s => s.value === deliveryStatus)?.label || deliveryStatus;
 
         return `<tr>
           <td>

@@ -25,6 +25,7 @@
     .delivery-select.status-dang_chuan_bi { color: #2563eb; border-color: #bfdbfe; background: #eff6ff; }
     .delivery-select.status-dang_giao     { color: #7c3aed; border-color: #ddd6fe; background: #f5f3ff; }
     .delivery-select.status-da_giao       { color: #16a34a; border-color: #bbf7d0; background: #f0fdf4; }
+    .delivery-select.status-da_tra_do     { color: #0891b2; border-color: #a5f3fc; background: #ecfeff; }
     .delivery-select.status-da_huy        { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
   </style>
 </head>
@@ -215,10 +216,28 @@
       { value: 'dang_chuan_bi', label: 'Đang chuẩn bị' },
       { value: 'dang_giao',     label: 'Đang giao hàng' },
       { value: 'da_giao',       label: 'Đã giao hàng' },
+      { value: 'da_tra_do',     label: 'Đã trả đồ' },
       { value: 'da_huy',        label: 'Đã hủy' },
     ];
 
     let currentPage = 1, allOrders = [];
+
+    function getOrderDeliveryStatus(order) {
+      // Nếu đã có deliveryStatus được lưu thì dùng
+      if (order.deliveryStatus && order.deliveryStatus !== 'cho_xac_nhan') {
+        return order.deliveryStatus;
+      }
+      // Fallback: suy ra từ status đơn hàng
+      const map = {
+        'cho_xac_nhan': 'cho_xac_nhan',
+        'da_xac_nhan':  'dang_chuan_bi',
+        'dang_giao':    'dang_giao',
+        'dang_thue':    'da_giao',
+        'da_tra_do':    'da_tra_do',
+        'da_huy':       'da_huy',
+      };
+      return map[order.status] || order.deliveryStatus || 'cho_xac_nhan';
+    }
 
     function applyFilters() {
       const search = document.getElementById('searchInput').value.toLowerCase();
@@ -226,8 +245,9 @@
       const methodId = document.getElementById('methodFilter').value;
 
       allOrders = StorageService.getAll('crb_rental_orders').filter(o => {
+        const actualDeliveryStatus = getOrderDeliveryStatus(o);
         if (o.status === 'da_huy') return false;
-        if (deliveryStatus && (o.deliveryStatus || 'cho_xac_nhan') !== deliveryStatus) return false;
+        if (deliveryStatus && actualDeliveryStatus !== deliveryStatus) return false;
         if (methodId && o.shippingMethodId !== methodId) return false;
         if (search && !o.orderRef?.toLowerCase().includes(search)
           && !o.shippingTrackingRef?.toLowerCase().includes(search)
@@ -244,10 +264,10 @@
     function renderStats() {
       const all = StorageService.getAll('crb_rental_orders').filter(o => o.status !== 'da_huy');
       document.getElementById('statsGrid').innerHTML = `
-        <div class="stat-card"><div class="stat-icon orange">⏳</div><div><div class="stat-value">${all.filter(o => (o.deliveryStatus||'cho_xac_nhan') === 'cho_xac_nhan').length}</div><div class="stat-label">Chờ xác nhận</div></div></div>
-        <div class="stat-card"><div class="stat-icon blue">📦</div><div><div class="stat-value">${all.filter(o => o.deliveryStatus === 'dang_chuan_bi').length}</div><div class="stat-label">Đang chuẩn bị</div></div></div>
-        <div class="stat-card"><div class="stat-icon orange">🚚</div><div><div class="stat-value">${all.filter(o => o.deliveryStatus === 'dang_giao').length}</div><div class="stat-label">Đang giao</div></div></div>
-        <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-value">${all.filter(o => o.deliveryStatus === 'da_giao').length}</div><div class="stat-label">Đã giao</div></div></div>`;
+        <div class="stat-card"><div class="stat-icon orange">⏳</div><div><div class="stat-value">${all.filter(o => getOrderDeliveryStatus(o) === 'cho_xac_nhan').length}</div><div class="stat-label">Chờ xác nhận</div></div></div>
+        <div class="stat-card"><div class="stat-icon blue">📦</div><div><div class="stat-value">${all.filter(o => getOrderDeliveryStatus(o) === 'dang_chuan_bi').length}</div><div class="stat-label">Đang chuẩn bị</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">🚚</div><div><div class="stat-value">${all.filter(o => getOrderDeliveryStatus(o) === 'dang_giao').length}</div><div class="stat-label">Đang giao</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-value">${all.filter(o => getOrderDeliveryStatus(o) === 'da_giao').length}</div><div class="stat-label">Đã giao</div></div></div>`;
     }
 
     function renderTable() {
@@ -262,7 +282,7 @@
 
       tbody.innerHTML = paged.items.map(o => {
         const method = o.shippingMethodId ? ShippingModule.getById(o.shippingMethodId) : null;
-        const deliveryStatus = o.deliveryStatus || 'cho_xac_nhan';
+        const deliveryStatus = getOrderDeliveryStatus(o);
         const statusLabel = DELIVERY_STATUSES.find(s => s.value === deliveryStatus)?.label || deliveryStatus;
 
         return `<tr>

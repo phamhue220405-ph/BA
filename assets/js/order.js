@@ -40,7 +40,11 @@ const OrderModule = {
 
   getRentalOrders(filters = {}) {
     let orders = StorageService.getAll('crb_rental_orders')
-      .filter(o => !o.deleted);
+      .filter(o => !o.deleted)
+      .map(o => ({
+        ...o,
+        deliveryStatus: o.deliveryStatus || this.getDeliveryStatusForOrderStatus(o.status)
+      }));
 
     // lọc theo user
     if (filters.userId) {
@@ -72,7 +76,25 @@ const OrderModule = {
   },
 
   getRentalOrderById(id) {
-    return StorageService.getById('crb_rental_orders', id);
+    const order = StorageService.getById('crb_rental_orders', id);
+    if (!order) return null;
+    if (!order.deliveryStatus) {
+      order.deliveryStatus = this.getDeliveryStatusForOrderStatus(order.status);
+    }
+    return order;
+  },
+
+  getDeliveryStatusForOrderStatus(orderStatus) {
+    const map = {
+      cho_xac_nhan: 'cho_xac_nhan',
+      da_xac_nhan: 'dang_chuan_bi',
+      dang_giao: 'dang_giao',
+      da_giao: 'da_giao',
+      dang_thue: 'da_giao',
+      da_tra_do: 'da_giao',
+      da_huy: 'da_huy'
+    };
+    return map[orderStatus] || 'cho_xac_nhan';
   },
 
   updateRentalStatus(id, newStatus, staffId) {
@@ -80,7 +102,11 @@ const OrderModule = {
     if (!order) return { error: 'Không tìm thấy đơn hàng' };
     const history = order.statusHistory || [];
     history.push({ status: newStatus, timestamp: new Date().toISOString(), updatedBy: staffId });
-    const changes = { status: newStatus, statusHistory: history };
+    const changes = {
+      status: newStatus,
+      statusHistory: history,
+      deliveryStatus: this.getDeliveryStatusForOrderStatus(newStatus)
+    };
     if (newStatus === 'da_tra_do') {
       changes.actualReturnDate = new Date().toISOString();
       changes.depositStatus = 'refunded';
@@ -106,26 +132,34 @@ const OrderModule = {
     return { success: true };
   },
 
-  cancelRentalOrder(id) {
-
+  updateRentalOrder(id, changes) {
     const order = this.getRentalOrderById(id);
-
-    if (!order) {
-      return { error: 'Không tìm thấy đơn thuê' };
+    if (!order) return { error: 'Không tìm thấy đơn hàng' };
+    const updated = { ...changes };
+    if (changes.status) {
+      updated.deliveryStatus = this.getDeliveryStatusForOrderStatus(changes.status);
     }
+    StorageService.update('crb_rental_orders', id, { ...updated, updatedAt: new Date().toISOString() });
+    return { success: true };
+  },
 
-    if (order.status === 'da_huy') {
-      return { error: 'Đơn thuê đã bị hủy' };
-    }
+  cancelRentalOrder(id, cancelledBy) {
+    const order = this.getRentalOrderById(id);
+    if (!order) return { error: 'Không tìm thấy đơn thuê' };
+    if (order.status === 'da_huy') return { error: 'Đơn thuê đã bị hủy' };
 
-    this.updateRentalOrder(id, {
+    const history = order.statusHistory || [];
+    history.push({ status: 'da_huy', timestamp: new Date().toISOString(), updatedBy: cancelledBy || order.userId });
+
+    StorageService.update('crb_rental_orders', id, {
       status: 'da_huy',
-      note: 'Khách hàng hủy đơn'
+      deliveryStatus: 'da_huy',
+      statusHistory: history,
+      note: 'Khách hàng hủy đơn',
+      updatedAt: new Date().toISOString()
     });
 
-    return {
-      success: true
-    };
+    return { success: true };
   },
 
   completeRentalOrder(id) {

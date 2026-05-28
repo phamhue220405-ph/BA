@@ -37,7 +37,11 @@ const OrderModule = {
   },
 
   getRentalOrders(filters = {}) {
-    let orders = StorageService.getAll('crb_rental_orders');
+    let orders = StorageService.getAll('crb_rental_orders')
+      .map(o => ({
+        ...o,
+        deliveryStatus: o.deliveryStatus || this.getDeliveryStatusForOrderStatus(o.status)
+      }));
     if (filters.userId) orders = orders.filter(o => o.userId === filters.userId);
     if (filters.status) orders = orders.filter(o => o.status === filters.status);
     if (filters.search) {
@@ -52,7 +56,25 @@ const OrderModule = {
   },
 
   getRentalOrderById(id) {
-    return StorageService.getById('crb_rental_orders', id);
+    const order = StorageService.getById('crb_rental_orders', id);
+    if (!order) return null;
+    if (!order.deliveryStatus) {
+      order.deliveryStatus = this.getDeliveryStatusForOrderStatus(order.status);
+    }
+    return order;
+  },
+
+  getDeliveryStatusForOrderStatus(orderStatus) {
+    const map = {
+      cho_xac_nhan: 'cho_xac_nhan',
+      da_xac_nhan: 'dang_chuan_bi',
+      dang_giao: 'dang_giao',
+      da_giao: 'da_giao',
+      dang_thue: 'da_giao',
+      da_tra_do: 'da_giao',
+      da_huy: 'da_huy'
+    };
+    return map[orderStatus] || 'cho_xac_nhan';
   },
 
   updateRentalStatus(id, newStatus, staffId) {
@@ -60,7 +82,11 @@ const OrderModule = {
     if (!order) return { error: 'Không tìm thấy đơn hàng' };
     const history = order.statusHistory || [];
     history.push({ status: newStatus, timestamp: new Date().toISOString(), updatedBy: staffId });
-    const changes = { status: newStatus, statusHistory: history };
+    const changes = {
+      status: newStatus,
+      statusHistory: history,
+      deliveryStatus: this.getDeliveryStatusForOrderStatus(newStatus)
+    };
     if (newStatus === 'da_tra_do') {
       changes.actualReturnDate = new Date().toISOString();
       changes.depositStatus = 'refunded';
@@ -85,6 +111,7 @@ const OrderModule = {
     history.push({ status: 'da_huy', timestamp: new Date().toISOString(), updatedBy: cancelledBy });
     StorageService.update('crb_rental_orders', id, {
       status: 'da_huy',
+      deliveryStatus: 'da_huy',
       statusHistory: history,
       depositStatus: order.paymentStatus === 'paid' ? 'refunded' : order.depositStatus
     });

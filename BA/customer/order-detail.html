@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chi ti?t don hàng - LuxRent</title>
+  <title>Chi ti?t don hï¿½ng - LuxRent</title>
   <link rel="stylesheet" href="../assets/css/main.css">
   <link rel="stylesheet" href="../assets/css/customer.css">
   <link rel="stylesheet" href="../assets/css/components.css">
@@ -17,7 +17,7 @@
         <div class="user-menu" id="userMenu">
           <button class="user-btn" onclick="toggleUserMenu()"><span id="userMenuLabel">??</span> ?</button>
           <div class="user-dropdown" id="userDropdown" style="display:none">
-            <div id="authLinks"><a href="/customer/profile.html">?? H? so</a><a href="/customer/orders.html">?? Ðon hàng</a><hr><a href="#" onclick="doLogout()">?? Ðang xu?t</a></div>
+            <div id="authLinks"><a href="/customer/profile.html">?? H? so</a><a href="/customer/orders.html">?? ï¿½on hï¿½ng</a><hr><a href="#" onclick="doLogout()">?? ï¿½ang xu?t</a></div>
           </div>
         </div>
       </div>
@@ -26,7 +26,7 @@
 
   <section class="section">
     <div class="container" style="max-width:900px">
-      <div class="breadcrumb"><a href="/customer/orders.html">? Ðon hàng c?a tôi</a></div>
+      <div class="breadcrumb"><a href="/customer/orders.html">? ï¿½on hï¿½ng c?a tï¿½i</a></div>
       <div id="orderDetail"><div class="spinner"></div></div>
     </div>
   </section>
@@ -34,12 +34,12 @@
   <!-- Return Modal -->
   <div id="returnModal" class="modal-overlay" style="display:none">
     <div class="modal">
-      <div class="modal-header"><div class="modal-title">?? Yêu c?u tr? d?</div><button class="modal-close" onclick="closeReturnModal()">?</button></div>
+      <div class="modal-header"><div class="modal-title">?? Yï¿½u c?u tr? d?</div><button class="modal-close" onclick="closeReturnModal()">?</button></div>
       <div id="penaltyAlert" class="alert alert-warning" style="display:none"></div>
-      <div class="form-group"><label>Ð?a ch? tr? d?</label><input type="text" id="returnAddress" class="form-control" placeholder="Ð?a ch? tr? d?"></div>
+      <div class="form-group"><label>ï¿½?a ch? tr? d?</label><input type="text" id="returnAddress" class="form-control" placeholder="ï¿½?a ch? tr? d?"></div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeReturnModal()">H?y</button>
-        <button class="btn btn-primary" onclick="confirmReturn()">Xác nh?n tr? d?</button>
+        <button class="btn btn-primary" onclick="confirmReturn()">Xï¿½c nh?n tr? d?</button>
       </div>
     </div>
   </div>
@@ -65,24 +65,24 @@
 
     function renderOrderDetail() {
       const order = OrderModule.getRentalOrderById(orderId);
-      if (!order) { document.getElementById('orderDetail').innerHTML = '<div class="empty-state"><div class="empty-state-icon">??</div><div class="empty-state-title">Không tìm th?y don hàng</div></div>'; return; }
+      if (!order) { document.getElementById('orderDetail').innerHTML = '<div class="empty-state"><div class="empty-state-icon">??</div><div class="empty-state-title">Khï¿½ng tï¿½m th?y don hï¿½ng</div></div>'; return; }
       currentOrder = order;
 
-      const STEPS = ['cho_xac_nhan', 'da_xac_nhan', 'dang_giao', 'dang_thue', 'da_tra_do'];
+      const STEPS = ['cho_xac_nhan', 'da_xac_nhan', 'dang_giao', 'da_giao', 'dang_thue', 'da_tra_do'];
       const currentStep = STEPS.indexOf(order.status);
 
       document.getElementById('orderDetail').innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
           <div>
             <h1 style="font-size:24px;font-weight:700">${order.orderRef}</h1>
-            <div style="font-size:13px;color:var(--gray-400)">Ð?t ngày ${formatDate(order.createdAt)}</div>
+            <div style="font-size:13px;color:var(--gray-400)">ï¿½?t ngï¿½y ${formatDate(order.createdAt)}</div>
           </div>
           <span class="status-badge status-${order.status}" style="font-size:14px;padding:6px 16px">${STATUS_LABELS[order.status]}</span>
         </div>
 
         <!-- Delivery Timeline -->
         <div class="card" style="padding:24px;margin-bottom:20px">
-          <h3 style="font-size:16px;font-weight:700;margin-bottom:20px">Ti?n trình don hàng</h3>
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:20px">Ti?n trï¿½nh don hï¿½ng</h3>
           <div class="order-timeline">
             ${STEPS.map((s, i) => `
               <div class="timeline-step">
@@ -91,19 +91,19 @@
               </div>
               ${i < STEPS.length - 1 ? `<div class="timeline-line ${i < currentStep ? 'done' : ''}"></div>` : ''}`).join('')}
           </div>
-          ${order.status === 'dang_giao' ? '<div class="alert alert-warning" style="margin-top:12px">?? Ðon hàng dang du?c giao, không th? h?y</div>' : ''}
+          ${order.status === 'dang_giao' ? '<div class="alert alert-warning" style="margin-top:12px">?? ï¿½on hï¿½ng dang du?c giao, khï¿½ng th? h?y</div>' : ''}
         </div>
 
         <!-- Items -->
         <div class="card" style="padding:24px;margin-bottom:20px">
-          <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">S?n ph?m thuê</h3>
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">S?n ph?m thuï¿½</h3>
           ${(order.items || []).map(i => `
             <div style="display:flex;gap:16px;padding:12px 0;border-bottom:1px solid var(--gray-100)">
               <img src="${i.productImage || 'https://via.placeholder.com/70x90'}" style="width:70px;height:90px;object-fit:cover;border-radius:8px">
               <div style="flex:1">
                 <div style="font-weight:700;margin-bottom:4px">${i.productName}</div>
-                <div style="font-size:13px;color:var(--gray-500)">Size: ${i.size} | Màu: ${i.color}</div>
-                <div style="font-size:13px;color:var(--gray-500)">${formatDate(i.rentalStartDate)} ? ${formatDate(i.rentalEndDate)} (${i.rentalDays} ngày)</div>
+                <div style="font-size:13px;color:var(--gray-500)">Size: ${i.size} | Mï¿½u: ${i.color}</div>
+                <div style="font-size:13px;color:var(--gray-500)">${formatDate(i.rentalStartDate)} ? ${formatDate(i.rentalEndDate)} (${i.rentalDays} ngï¿½y)</div>
                 <div style="font-size:14px;font-weight:600;color:var(--primary);margin-top:4px">${formatCurrency(i.subtotal)}</div>
               </div>
             </div>`).join('')}
@@ -111,42 +111,42 @@
 
         <!-- Delivery Info -->
         <div class="card" style="padding:24px;margin-bottom:20px">
-          <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Thông tin giao hàng</h3>
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Thï¿½ng tin giao hï¿½ng</h3>
           <div style="font-size:14px;display:grid;gap:8px">
             <div>?? <strong>${order.deliveryInfo?.recipientName}</strong> - ${order.deliveryInfo?.phone}</div>
             <div>?? ${order.deliveryInfo?.address}</div>
-            ${order.deliveryInfo?.preferredDeliveryDate ? `<div>?? Ngày giao: ${formatDate(order.deliveryInfo.preferredDeliveryDate)}</div>` : ''}
+            ${order.deliveryInfo?.preferredDeliveryDate ? `<div>?? Ngï¿½y giao: ${formatDate(order.deliveryInfo.preferredDeliveryDate)}</div>` : ''}
           </div>
         </div>
 
         <!-- Financial Summary -->
         <div class="card" style="padding:24px;margin-bottom:20px">
-          <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Tóm t?t thanh toán</h3>
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Tï¿½m t?t thanh toï¿½n</h3>
           <div class="financial-summary">
-            <div class="financial-row"><span>Ti?n thuê</span><span>${formatCurrency(order.subtotal)}</span></div>
+            <div class="financial-row"><span>Ti?n thuï¿½</span><span>${formatCurrency(order.subtotal)}</span></div>
             <div class="financial-row"><span>Ti?n c?c</span><span style="color:var(--warning)">${formatCurrency(order.depositTotal)}</span></div>
-            ${order.shippingCost ? `<div class="financial-row"><span>Phí v?n chuy?n</span><span>${formatCurrency(order.shippingCost)}</span></div>` : ''}
-            ${order.discountAmount ? `<div class="financial-row refund"><span>Gi?m giá (${order.promotionCode})</span><span>-${formatCurrency(order.discountAmount)}</span></div>` : ''}
+            ${order.shippingCost ? `<div class="financial-row"><span>Phï¿½ v?n chuy?n</span><span>${formatCurrency(order.shippingCost)}</span></div>` : ''}
+            ${order.discountAmount ? `<div class="financial-row refund"><span>Gi?m giï¿½ (${order.promotionCode})</span><span>-${formatCurrency(order.discountAmount)}</span></div>` : ''}
             <div class="financial-row"><span>T?ng c?ng</span><span>${formatCurrency(order.totalAmount)}</span></div>
-            <div class="financial-row"><span>Tr?ng thái thanh toán</span><span class="status-badge status-${order.paymentStatus === 'paid' ? 'da_xac_nhan' : 'cho_xac_nhan'}">${order.paymentStatus === 'paid' ? '? Ðã thanh toán' : '? Ch? thanh toán'}</span></div>
-            <div class="financial-row"><span>Tr?ng thái c?c</span><span class="status-badge status-${order.depositStatus === 'refunded' ? 'da_tra_do' : 'cho_xac_nhan'}">${order.depositStatus === 'refunded' ? '? Ðã hoàn c?c' : order.depositStatus === 'held' ? '?? Ðang gi?' : order.depositStatus}</span></div>
-            ${order.latePenalty ? `<div class="financial-row penalty"><span>Phí tr? tr?</span><span>-${formatCurrency(order.latePenalty)}</span></div>` : ''}
+            <div class="financial-row"><span>Tr?ng thï¿½i thanh toï¿½n</span><span class="status-badge status-${order.paymentStatus === 'paid' ? 'da_xac_nhan' : 'cho_xac_nhan'}">${order.paymentStatus === 'paid' ? '? ï¿½ï¿½ thanh toï¿½n' : '? Ch? thanh toï¿½n'}</span></div>
+            <div class="financial-row"><span>Tr?ng thï¿½i c?c</span><span class="status-badge status-${order.depositStatus === 'refunded' ? 'da_tra_do' : 'cho_xac_nhan'}">${order.depositStatus === 'refunded' ? '? ï¿½ï¿½ hoï¿½n c?c' : order.depositStatus === 'held' ? '?? ï¿½ang gi?' : order.depositStatus}</span></div>
+            ${order.latePenalty ? `<div class="financial-row penalty"><span>Phï¿½ tr? tr?</span><span>-${formatCurrency(order.latePenalty)}</span></div>` : ''}
           </div>
         </div>
 
         <!-- Actions -->
         <div style="display:flex;gap:12px;flex-wrap:wrap">
           <a href="/customer/orders.html" class="btn btn-secondary">? Quay l?i</a>
-          ${order.status === 'cho_xac_nhan' ? `<button class="btn btn-danger" onclick="cancelOrder()">H?y don hàng</button>` : ''}
-          ${order.status === 'dang_thue' ? `<button class="btn btn-primary" onclick="openReturnModal()">?? Yêu c?u tr? d?</button>` : ''}
+          ${order.status === 'cho_xac_nhan' ? `<button class="btn btn-danger" onclick="cancelOrder()">H?y don hï¿½ng</button>` : ''}
+          ${order.status === 'dang_thue' ? `<button class="btn btn-primary" onclick="openReturnModal()">?? Yï¿½u c?u tr? d?</button>` : ''}
         </div>`;
     }
 
     function cancelOrder() {
-      showConfirm('B?n có ch?c mu?n h?y don hàng này?', () => {
+      showConfirm('B?n cï¿½ ch?c mu?n h?y don hï¿½ng nï¿½y?', () => {
         const result = OrderModule.cancelRentalOrder(orderId, session.userId);
         if (result.error) { Toast.show(result.error, 'error'); return; }
-        Toast.show('Ðã h?y don hàng', 'success');
+        Toast.show('ï¿½ï¿½ h?y don hï¿½ng', 'success');
         renderOrderDetail();
       });
     }
@@ -154,7 +154,7 @@
     function openReturnModal() {
       const penalty = OrderModule.calculateLatePenalty(orderId);
       const penaltyEl = document.getElementById('penaltyAlert');
-      if (penalty > 0) { penaltyEl.textContent = `?? B?n tr? tr? h?n. Phí ph?t: ${formatCurrency(penalty)}`; penaltyEl.style.display = 'flex'; }
+      if (penalty > 0) { penaltyEl.textContent = `?? B?n tr? tr? h?n. Phï¿½ ph?t: ${formatCurrency(penalty)}`; penaltyEl.style.display = 'flex'; }
       else penaltyEl.style.display = 'none';
       document.getElementById('returnModal').style.display = 'flex';
     }
@@ -163,11 +163,11 @@
 
     function confirmReturn() {
       const address = document.getElementById('returnAddress').value.trim();
-      if (!address) { Toast.show('Vui lòng nh?p d?a ch? tr? d?', 'warning'); return; }
+      if (!address) { Toast.show('Vui lï¿½ng nh?p d?a ch? tr? d?', 'warning'); return; }
       OrderModule.initiateReturn(orderId, address);
       OrderModule.updateRentalStatus(orderId, 'da_tra_do', session.userId);
       closeReturnModal();
-      Toast.show('Yêu c?u tr? d? dã du?c ghi nh?n!', 'success');
+      Toast.show('Yï¿½u c?u tr? d? dï¿½ du?c ghi nh?n!', 'success');
       renderOrderDetail();
     }
 

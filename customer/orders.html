@@ -47,6 +47,7 @@
         <button class="tab-btn" onclick="filterOrders('cho_xac_nhan')">Ch? x�c nh?n</button>
         <button class="tab-btn" onclick="filterOrders('da_xac_nhan')">�� x�c nh?n</button>
         <button class="tab-btn" onclick="filterOrders('dang_giao')">�ang giao</button>
+        <button class="tab-btn" onclick="filterOrders('da_giao')">�� giao</button>
         <button class="tab-btn" onclick="filterOrders('dang_thue')">�ang thu�</button>
         <button class="tab-btn" onclick="filterOrders('da_tra_do')">�� tr? d?</button>
         <button class="tab-btn" onclick="filterOrders('da_huy')">�� h?y</button>
@@ -79,7 +80,7 @@
 
     function filterOrders(status) {
       document.querySelectorAll('#orderTabs .tab-btn').forEach((b, i) => {
-        const statuses = ['', 'cho_xac_nhan', 'da_xac_nhan', 'dang_giao', 'dang_thue', 'da_tra_do', 'da_huy'];
+        const statuses = ['', 'cho_xac_nhan', 'da_xac_nhan', 'dang_giao', 'da_giao', 'dang_thue', 'da_tra_do', 'da_huy'];
         b.classList.toggle('active', statuses[i] === status);
       });
       renderOrders(status);

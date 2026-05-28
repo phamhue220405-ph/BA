@@ -12,7 +12,7 @@ class StorageService {
 
   static getById(key, id) {
     const items = this.getAll(key);
-    return items.find(item => item.id === id) || null;
+    return items.find(item => String(item.id) === String(id)) || null;
   }
 
   static save(key, item) {
@@ -33,7 +33,7 @@ class StorageService {
   static update(key, id, changes) {
     try {
       const items = this.getAll(key);
-      const idx = items.findIndex(item => item.id === id);
+      const idx = items.findIndex(item => String(item.id) === String(id));
       if (idx === -1) return null;
       items[idx] = { ...items[idx], ...changes, updatedAt: new Date().toISOString() };
       localStorage.setItem(key, JSON.stringify(items));
@@ -46,7 +46,7 @@ class StorageService {
 
   static delete(key, id) {
     try {
-      const items = this.getAll(key).filter(item => item.id !== id);
+      const items = this.getAll(key).filter(item => String(item.id) !== String(id));
       localStorage.setItem(key, JSON.stringify(items));
       return true;
     } catch (e) {

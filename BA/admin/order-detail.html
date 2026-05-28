@@ -37,7 +37,7 @@
     const urlParams = new URLSearchParams(window.location.search);
     const orderId = urlParams.get('id');
 
-    const STATUS_SEQUENCE = ['cho_xac_nhan','da_xac_nhan','dang_giao','dang_thue','da_tra_do'];
+    const STATUS_SEQUENCE = ['cho_xac_nhan','da_xac_nhan','dang_giao','da_giao','dang_thue','da_tra_do'];
 
     function renderOrderDetail() {
       const order = OrderModule.getRentalOrderById(orderId);

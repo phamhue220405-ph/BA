@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ðon hàng c?a tôi - LuxRent</title>
+  <title>ï¿½on hï¿½ng c?a tï¿½i - LuxRent</title>
   <link rel="stylesheet" href="../assets/css/main.css">
   <link rel="stylesheet" href="../assets/css/customer.css">
   <link rel="stylesheet" href="../assets/css/components.css">
@@ -22,34 +22,35 @@
       <div class="navbar-nav">
         <a href="/index.html" class="nav-link">Trang ch?</a>
         <a href="/customer/products.html" class="nav-link">S?n ph?m</a>
-        <a href="/customer/fitting-booking.html" class="nav-link">Ð?t l?ch th?</a>
+        <a href="/customer/fitting-booking.html" class="nav-link">ï¿½?t l?ch th?</a>
       </div>
       <div class="navbar-actions">
-        <a href="/customer/cart.html" class="cart-btn">?? Gi? hàng <span class="cart-badge" style="display:none">0</span></a>
+        <a href="/customer/cart.html" class="cart-btn">?? Gi? hï¿½ng <span class="cart-badge" style="display:none">0</span></a>
         <div class="user-menu" id="userMenu">
           <button class="user-btn" onclick="toggleUserMenu()"><span id="userMenuLabel">??</span> ?</button>
           <div class="user-dropdown" id="userDropdown" style="display:none">
-            <div id="authLinks"><a href="/customer/profile.html">?? H? so</a><a href="/customer/orders.html">?? Ðon hàng</a><hr><a href="#" onclick="doLogout()">?? Ðang xu?t</a></div>
+            <div id="authLinks"><a href="/customer/profile.html">?? H? so</a><a href="/customer/orders.html">?? ï¿½on hï¿½ng</a><hr><a href="#" onclick="doLogout()">?? ï¿½ang xu?t</a></div>
           </div>
         </div>
       </div>
     </div>
   </nav>
 
-  <div class="page-header"><div class="container"><h1>Ðon hàng c?a tôi</h1></div></div>
+  <div class="page-header"><div class="container"><h1>ï¿½on hï¿½ng c?a tï¿½i</h1></div></div>
 
   <section class="section">
     <div class="container">
-      <div id="newOrderAlert" class="alert alert-success" style="display:none">? Ð?t hàng thành công! Ðon hàng c?a b?n dang ch? xác nh?n.</div>
+      <div id="newOrderAlert" class="alert alert-success" style="display:none">? ï¿½?t hï¿½ng thï¿½nh cï¿½ng! ï¿½on hï¿½ng c?a b?n dang ch? xï¿½c nh?n.</div>
 
       <div class="tabs" id="orderTabs">
         <button class="tab-btn active" onclick="filterOrders('')">T?t c?</button>
-        <button class="tab-btn" onclick="filterOrders('cho_xac_nhan')">Ch? xác nh?n</button>
-        <button class="tab-btn" onclick="filterOrders('da_xac_nhan')">Ðã xác nh?n</button>
-        <button class="tab-btn" onclick="filterOrders('dang_giao')">Ðang giao</button>
-        <button class="tab-btn" onclick="filterOrders('dang_thue')">Ðang thuê</button>
-        <button class="tab-btn" onclick="filterOrders('da_tra_do')">Ðã tr? d?</button>
-        <button class="tab-btn" onclick="filterOrders('da_huy')">Ðã h?y</button>
+        <button class="tab-btn" onclick="filterOrders('cho_xac_nhan')">Ch? xï¿½c nh?n</button>
+        <button class="tab-btn" onclick="filterOrders('da_xac_nhan')">ï¿½ï¿½ xï¿½c nh?n</button>
+        <button class="tab-btn" onclick="filterOrders('dang_giao')">ï¿½ang giao</button>
+        <button class="tab-btn" onclick="filterOrders('da_giao')">ï¿½ï¿½ giao</button>
+        <button class="tab-btn" onclick="filterOrders('dang_thue')">ï¿½ang thuï¿½</button>
+        <button class="tab-btn" onclick="filterOrders('da_tra_do')">ï¿½ï¿½ tr? d?</button>
+        <button class="tab-btn" onclick="filterOrders('da_huy')">ï¿½ï¿½ h?y</button>
       </div>
 
       <div id="ordersContainer"></div>
@@ -79,7 +80,7 @@
 
     function filterOrders(status) {
       document.querySelectorAll('#orderTabs .tab-btn').forEach((b, i) => {
-        const statuses = ['', 'cho_xac_nhan', 'da_xac_nhan', 'dang_giao', 'dang_thue', 'da_tra_do', 'da_huy'];
+        const statuses = ['', 'cho_xac_nhan', 'da_xac_nhan', 'dang_giao', 'da_giao', 'dang_thue', 'da_tra_do', 'da_huy'];
         b.classList.toggle('active', statuses[i] === status);
       });
       renderOrders(status);
@@ -91,7 +92,7 @@
       if (statusFilter) orders = orders.filter(o => o.status === statusFilter);
       const container = document.getElementById('ordersContainer');
       if (!orders.length) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">??</div><div class="empty-state-title">Chua có don hàng</div><a href="/customer/products.html" class="btn btn-primary" style="margin-top:16px">Xem s?n ph?m</a></div>';
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">??</div><div class="empty-state-title">Chua cï¿½ don hï¿½ng</div><a href="/customer/products.html" class="btn btn-primary" style="margin-top:16px">Xem s?n ph?m</a></div>';
         return;
       }
 
@@ -99,7 +100,7 @@
       const now = new Date();
       const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
       orders.filter(o => o.status === 'dang_thue' && o.agreedReturnDate && new Date(o.agreedReturnDate) <= in24h && new Date(o.agreedReturnDate) > now)
-        .forEach(o => Toast.show(`?? Ðon ${o.orderRef} s?p d?n h?n tr?!`, 'warning'));
+        .forEach(o => Toast.show(`?? ï¿½on ${o.orderRef} s?p d?n h?n tr?!`, 'warning'));
 
       container.innerHTML = orders.map(o => `
         <div class="order-card">
@@ -129,10 +130,10 @@
     }
 
     function cancelOrder(orderId) {
-      showConfirm('B?n có ch?c mu?n h?y don hàng này?', () => {
+      showConfirm('B?n cï¿½ ch?c mu?n h?y don hï¿½ng nï¿½y?', () => {
         const result = OrderModule.cancelRentalOrder(orderId, session.userId);
         if (result.error) { Toast.show(result.error, 'error'); return; }
-        Toast.show('Ðã h?y don hàng', 'success');
+        Toast.show('ï¿½ï¿½ h?y don hï¿½ng', 'success');
         renderOrders('');
       });
     }
@@ -141,7 +142,7 @@
       if (!session) return;
       const bookings = OrderModule.getFittingBookings({ userId: session.userId });
       const container = document.getElementById('fittingsContainer');
-      if (!bookings.length) { container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">??</div><div class="empty-state-title">Chua có l?ch th?</div><a href="/customer/fitting-booking.html" class="btn btn-outline" style="margin-top:16px">Ð?t l?ch th?</a></div>'; return; }
+      if (!bookings.length) { container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">??</div><div class="empty-state-title">Chua cï¿½ l?ch th?</div><a href="/customer/fitting-booking.html" class="btn btn-outline" style="margin-top:16px">ï¿½?t l?ch th?</a></div>'; return; }
       container.innerHTML = bookings.map(b => `
         <div class="order-card">
           <div class="order-card-header">
@@ -159,9 +160,9 @@
     }
 
     function cancelFitting(id) {
-      showConfirm('H?y l?ch th? này?', () => {
+      showConfirm('H?y l?ch th? nï¿½y?', () => {
         OrderModule.cancelFittingBooking(id);
-        Toast.show('Ðã h?y l?ch th?', 'success');
+        Toast.show('ï¿½ï¿½ h?y l?ch th?', 'success');
         renderFittings();
       });
     }
