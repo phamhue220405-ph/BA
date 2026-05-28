@@ -3,26 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gi? h�ng - LuxRent</title>
+  <title>Giỏ hàng - Diệu Linh</title>
+
   <link rel="stylesheet" href="../assets/css/main.css">
   <link rel="stylesheet" href="../assets/css/customer.css">
   <link rel="stylesheet" href="../assets/css/components.css">
 </head>
+
 <body>
   <nav class="navbar">
     <div class="navbar-inner">
-      <a href="/index.html" class="navbar-brand"><img src="/assets/images/logo.png" alt="LuxRent" class="site-logo"></a>
+      <a href="/index.html" class="navbar-brand">
+        <img src="/assets/images/logo.png" alt="Diệu Linh" class="site-logo">
+      </a>
+
       <div class="navbar-nav">
-      <a href="/index.html" class="nav-link">Trang chủ</a>
-      <a href="/customer/products.html" class="nav-link">Sản phẩm</a>
-      <a href="/customer/fitting-booking.html" class="nav-link">Đặt lịch thử</a>
+        <a href="/index.html" class="nav-link">Trang chủ</a>
+        <a href="/customer/products.html" class="nav-link">Sản phẩm</a>
+        <a href="/customer/fitting-booking.html" class="nav-link">Đặt lịch thử</a>
       </div>
+
       <div class="navbar-actions">
-        <a href="/customer/cart.html" class="cart-btn">?? Gi? h�ng <span class="cart-badge" style="display:none">0</span></a>
+        <a href="/customer/cart.html" class="cart-btn">
+          🛒 Giỏ hàng <span class="cart-badge" style="display:none">0</span>
+        </a>
+
         <div class="user-menu" id="userMenu">
-          <button class="user-btn" onclick="toggleUserMenu()"><span id="userMenuLabel">??</span> ?</button>
+          <button class="user-btn" onclick="toggleUserMenu()">
+            <span id="userMenuLabel">👤</span> ▾
+          </button>
+
           <div class="user-dropdown" id="userDropdown" style="display:none">
-            <div id="authLinks"><a href="/customer/profile.html">?? H? so</a><a href="/customer/orders.html">?? �on h�ng</a><hr><a href="#" onclick="doLogout()">?? �ang xu?t</a></div>
+            <div id="authLinks">
+              <a href="/customer/profile.html">👤 Hồ sơ</a>
+              <a href="/customer/orders.html">📦 Đơn hàng</a>
+              <hr>
+              <a href="#" onclick="doLogout()">🚪 Đăng xuất</a>
+            </div>
           </div>
         </div>
       </div>
@@ -30,7 +47,9 @@
   </nav>
 
   <div class="page-header">
-      <div class="container"><h1>Giỏ hàng của bạn</h1></div>
+    <div class="container">
+      <h1>Giỏ hàng của bạn</h1>
+    </div>
   </div>
 
   <section class="section">
@@ -44,95 +63,239 @@
   <script src="../assets/js/auth.js"></script>
   <script src="../assets/js/product.js"></script>
   <script src="../assets/js/cart.js"></script>
+  <script src="../assets/js/customer.js"></script>
   <script src="../assets/js/seed.js"></script>
+
   <script>
     const session = AuthModule.requireAuth('/customer/login.html?redirect=/customer/cart.html');
+
     if (session) {
-      document.getElementById('userMenuLabel').textContent = '?? ' + session.fullName;
+      document.getElementById('userMenuLabel').textContent = '👤 ' + session.fullName;
       CartModule.updateCartBadge(session.userId);
     }
-    function toggleUserMenu() { const dd = document.getElementById('userDropdown'); dd.style.display = dd.style.display === 'none' ? 'block' : 'none'; }
-    document.addEventListener('click', e => { if (!document.getElementById('userMenu').contains(e.target)) document.getElementById('userDropdown').style.display = 'none'; });
-    function doLogout() { AuthModule.logout(); }
+
+    function toggleUserMenu() {
+      const dd = document.getElementById('userDropdown');
+      dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    }
+
+    document.addEventListener('click', e => {
+      const userMenu = document.getElementById('userMenu');
+      if (userMenu && !userMenu.contains(e.target)) {
+        document.getElementById('userDropdown').style.display = 'none';
+      }
+    });
+
+    function doLogout() {
+      AuthModule.logout();
+    }
+
+    function getCurrentCustomer() {
+      return CustomerModule.getById(session.userId);
+    }
+
+    function getLoyaltyInfo() {
+      const customer = getCurrentCustomer();
+      const config = CustomerModule.getPointConfig
+        ? CustomerModule.getPointConfig()
+        : { moneyPerPoint: 10000, pointValue: 1000 };
+
+      const points = customer?.loyaltyPoints || 0;
+      const discountValue = points * Number(config.pointValue || 0);
+
+      return {
+        customer,
+        points,
+        pointValue: Number(config.pointValue || 0),
+        moneyPerPoint: Number(config.moneyPerPoint || 0),
+        discountValue
+      };
+    }
+
+    function renderLoyaltyBox() {
+      const loyalty = getLoyaltyInfo();
+
+      return `
+        <div class="card" style="padding:20px;margin-bottom:20px;background:#fff7fb;border:1px solid #ead2e5">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:13px;color:var(--gray-500);margin-bottom:6px">Điểm tích lũy hiện có</div>
+              <div style="font-size:28px;font-weight:800;color:var(--primary)">
+                ${loyalty.points} điểm
+              </div>
+              <div style="font-size:13px;color:var(--gray-500);margin-top:4px">
+                Quy đổi hiện tại: 1 điểm = ${formatCurrency(loyalty.pointValue)}
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--gray-500);text-align:right">
+              Bạn có thể dùng điểm ở bước thanh toán<br>
+              để giảm chi phí thuê trang phục.
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
     function renderCart() {
       if (!session) return;
+
       const items = CartModule.getCart(session.userId);
       const totals = CartModule.getTotal(session.userId);
       const container = document.getElementById('cartContent');
 
       if (!items.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">??</div><div class="empty-state-title">Gi? h�ng tr?ng</div><div class="empty-state-desc">H�y th�m trang ph?c v�o gi? h�ng</div><br><a href="/customer/products.html" class="btn btn-primary">Xem s?n ph?m</a></div>`;
+        container.innerHTML = `
+          ${renderLoyaltyBox()}
+
+          <div class="empty-state">
+            <div class="empty-state-icon">🛒</div>
+            <div class="empty-state-title">Giỏ hàng trống</div>
+            <div class="empty-state-desc">Hãy thêm trang phục vào giỏ hàng</div>
+            <br>
+            <a href="/customer/products.html" class="btn btn-primary">Xem sản phẩm</a>
+          </div>
+        `;
         return;
       }
 
       container.innerHTML = `
         <div style="display:grid;grid-template-columns:1fr 360px;gap:32px">
           <div>
+            ${renderLoyaltyBox()}
+
             <div class="card">
               ${items.map(item => `
                 <div class="cart-item" id="item-${item.id}">
                   <div class="cart-item-img">
                     <img src="${item.productImage || 'https://via.placeholder.com/100x130?text=No+Image'}" alt="${item.productName}">
                   </div>
+
                   <div class="cart-item-info" style="flex:1">
                     <div class="cart-item-name">${item.productName}</div>
+
                     <div class="cart-item-meta">
                       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px">
-                        <span>Size: <select onchange="updateItem('${item.id}','size',this.value)" style="border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:13px">
-                          ${['S','M','L','XL','XXL'].map(s => `<option ${s===item.size?'selected':''}>${s}</option>`).join('')}
-                        </select></span>
-                        <span>M�u: <input type="text" value="${item.color}" onchange="updateItem('${item.id}','color',this.value)" style="border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:13px;width:100px"></span>
+                        <span>
+                          Size:
+                          <select onchange="updateItem('${item.id}','size',this.value)" style="border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:13px">
+                            ${['S','M','L','XL','XXL'].map(s => `<option ${s === item.size ? 'selected' : ''}>${s}</option>`).join('')}
+                          </select>
+                        </span>
+
+                        <span>
+                          Màu:
+                          <input type="text" value="${item.color || ''}" onchange="updateItem('${item.id}','color',this.value)" style="border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:13px;width:100px">
+                        </span>
                       </div>
+
                       <div style="display:flex;gap:16px;flex-wrap:wrap">
-                        <span>T?: <input type="date" value="${item.rentalStartDate}" onchange="updateItem('${item.id}','rentalStartDate',this.value)" style="border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:13px"></span>
-                        <span>�?n: <input type="date" value="${item.rentalEndDate}" onchange="updateItem('${item.id}','rentalEndDate',this.value)" style="border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:13px"></span>
+                        <span>
+                          Từ:
+                          <input type="date" value="${item.rentalStartDate}" onchange="updateItem('${item.id}','rentalStartDate',this.value)" style="border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:13px">
+                        </span>
+
+                        <span>
+                          Đến:
+                          <input type="date" value="${item.rentalEndDate}" onchange="updateItem('${item.id}','rentalEndDate',this.value)" style="border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:13px">
+                        </span>
                       </div>
                     </div>
+
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
                       <div>
                         <div class="cart-item-price">${formatCurrency(item.subtotal)}</div>
-                        <div style="font-size:12px;color:var(--gray-400)">${item.rentalDays} ng�y � ${formatCurrency(item.pricePerDay)}</div>
-                        <div style="font-size:12px;color:var(--warning)">C?c: ${formatCurrency(item.depositAmount)}</div>
+                        <div style="font-size:12px;color:var(--gray-400)">
+                          ${item.rentalDays} ngày × ${formatCurrency(item.pricePerDay)}
+                        </div>
+                        <div style="font-size:12px;color:var(--warning)">
+                          Cọc: ${formatCurrency(item.depositAmount)}
+                        </div>
                       </div>
-                      <button onclick="removeItem('${item.id}')" style="background:none;border:none;color:var(--error);font-size:20px;cursor:pointer;padding:4px" title="X�a">???</button>
+
+                      <button onclick="removeItem('${item.id}')" style="background:none;border:none;color:var(--error);font-size:20px;cursor:pointer;padding:4px" title="Xóa">
+                        🗑️
+                      </button>
                     </div>
                   </div>
-                </div>`).join('')}
+                </div>
+              `).join('')}
             </div>
           </div>
+
           <div>
             <div class="cart-summary card" style="padding:24px">
-              <h3 style="font-size:18px;font-weight:700;margin-bottom:20px">T�m t?t don h�ng</h3>
-              <div class="cart-summary-row"><span>Ti?n thu� (${items.length} s?n ph?m)</span><span>${formatCurrency(totals.rentalTotal)}</span></div>
-              <div class="cart-summary-row deposit"><span>?? Ti?n d?t c?c</span><span>${formatCurrency(totals.depositTotal)}</span></div>
-              <div class="cart-summary-row total"><span>T?ng c?ng</span><span>${formatCurrency(totals.total)}</span></div>
-              <div style="font-size:12px;color:var(--gray-400);margin-top:8px;margin-bottom:20px">* Ti?n c?c s? du?c ho�n tr? sau khi tr? d? d�ng h?n</div>
-              <button class="btn btn-primary btn-full btn-lg" onclick="goCheckout()">Ti?n h�nh thanh to�n ?</button>
-              <a href="/customer/products.html" class="btn btn-secondary btn-full" style="margin-top:10px;text-align:center">? Ti?p t?c mua s?m</a>
+              <h3 style="font-size:18px;font-weight:700;margin-bottom:20px">
+                Tóm tắt đơn hàng
+              </h3>
+
+              <div style="background:#f8f0f6;border:1px solid #ead2e5;border-radius:12px;padding:12px;margin-bottom:16px">
+                <div style="font-size:13px;color:var(--gray-500);margin-bottom:4px">
+                  Điểm tích lũy hiện có
+                </div>
+                <div style="font-size:22px;font-weight:800;color:var(--primary)">
+                  ${getLoyaltyInfo().points} điểm
+                </div>
+                <div style="font-size:12px;color:var(--gray-400);margin-top:4px">
+                  Có thể dùng điểm ở bước thanh toán
+                </div>
+              </div>
+
+              <div class="cart-summary-row">
+                <span>Tiền thuê (${items.length} sản phẩm)</span>
+                <span>${formatCurrency(totals.rentalTotal)}</span>
+              </div>
+
+              <div class="cart-summary-row deposit">
+                <span>💰 Tiền đặt cọc</span>
+                <span>${formatCurrency(totals.depositTotal)}</span>
+              </div>
+
+              <div class="cart-summary-row total">
+                <span>Tổng cộng</span>
+                <span>${formatCurrency(totals.total)}</span>
+              </div>
+
+              <div style="font-size:12px;color:var(--gray-400);margin-top:8px;margin-bottom:20px">
+                * Tiền cọc sẽ được hoàn trả sau khi trả đồ đúng hạn
+              </div>
+
+              <button class="btn btn-primary btn-full btn-lg" onclick="goCheckout()">
+                Tiến hành thanh toán →
+              </button>
+
+              <a href="/customer/products.html" class="btn btn-secondary btn-full" style="margin-top:10px;text-align:center">
+                ← Tiếp tục mua sắm
+              </a>
             </div>
           </div>
-        </div>`;
+        </div>
+      `;
     }
 
     function updateItem(itemId, field, value) {
       const changes = {};
       changes[field] = value;
+
       CartModule.updateItem(session.userId, itemId, changes);
       renderCart();
     }
 
     function removeItem(itemId) {
-      showConfirm('X�a s?n ph?m n�y kh?i gi? h�ng?', () => {
+      showConfirm('Xóa sản phẩm này khỏi giỏ hàng?', () => {
         CartModule.removeItem(session.userId, itemId);
-        Toast.show('�� x�a s?n ph?m', 'success');
+        Toast.show('Đã xóa sản phẩm', 'success');
         renderCart();
       });
     }
 
     function goCheckout() {
       const items = CartModule.getCart(session.userId);
-      if (!items.length) { Toast.show('Gi? h�ng tr?ng', 'warning'); return; }
+
+      if (!items.length) {
+        Toast.show('Giỏ hàng trống', 'warning');
+        return;
+      }
+
       window.location.href = '/customer/checkout.html';
     }
 
@@ -140,6 +303,3 @@
   </script>
 </body>
 </html>
-
-
-
