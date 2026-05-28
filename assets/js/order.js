@@ -39,18 +39,36 @@ const OrderModule = {
   },
 
   getRentalOrders(filters = {}) {
-    let orders = StorageService.getAll('crb_rental_orders');
-    if (filters.userId) orders = orders.filter(o => o.userId === filters.userId);
-    if (filters.status) orders = orders.filter(o => o.status === filters.status);
+    let orders = StorageService.getAll('crb_rental_orders')
+      .filter(o => !o.deleted);
+
+    // lọc theo user
+    if (filters.userId) {
+      orders = orders.filter(o => o.userId === filters.userId);
+    }
+
+    // lọc theo trạng thái
+    if (filters.status) {
+      orders = orders.filter(o => o.status === filters.status);
+    }
+
+    // tìm kiếm
     if (filters.search) {
       const q = filters.search.toLowerCase();
+
       orders = orders.filter(o =>
-        o.orderRef?.toLowerCase().includes(q) ||
         o.customerName?.toLowerCase().includes(q) ||
-        o.deliveryInfo?.phone?.includes(q)
+        o.customerPhone?.includes(q) ||
+        o.customerEmail?.toLowerCase().includes(q)
       );
     }
-    return orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // mới nhất trước
+    orders.sort((a, b) =>
+      new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    return orders;
   },
 
   getRentalOrderById(id) {
@@ -88,97 +106,228 @@ const OrderModule = {
     return { success: true };
   },
 
-  cancelRentalOrder(id, cancelledBy) {
+  cancelRentalOrder(id) {
+
     const order = this.getRentalOrderById(id);
-    if (!order) return { error: 'Không tìm thấy đơn hàng' };
-    if (['dang_giao', 'dang_thue', 'da_tra_do'].includes(order.status)) {
-      return { error: 'Không thể hủy đơn ở trạng thái này' };
+
+    if (!order) {
+      return { error: 'Không tìm thấy đơn thuê' };
     }
-    const history = order.statusHistory || [];
-    history.push({ status: 'da_huy', timestamp: new Date().toISOString(), updatedBy: cancelledBy });
-    StorageService.update('crb_rental_orders', id, {
+
+    if (order.status === 'da_huy') {
+      return { error: 'Đơn thuê đã bị hủy' };
+    }
+
+    this.updateRentalOrder(id, {
       status: 'da_huy',
-      statusHistory: history,
-      depositStatus: order.paymentStatus === 'paid' ? 'refunded' : order.depositStatus
+      note: 'Khách hàng hủy đơn'
     });
-    return { success: true };
+
+    return {
+      success: true
+    };
   },
 
-  convertFittingToRental(fittingId) {
-    const booking = this.getFittingBookingById(fittingId);
-    if (!booking) return { error: 'Không tìm thấy lịch thử' };
-    return { success: true, prefill: { userId: booking.userId, customerName: booking.customerName, phone: booking.customerPhone, products: booking.products } };
-  },
+  completeRentalOrder(id) {
 
-  // ===== FITTING BOOKINGS =====
-  checkSlotAvailability(date, timeSlot, maxPerSlot = 3) {
-    const bookings = StorageService.getAll('crb_fitting_bookings').filter(
-      b => b.preferredDate === date && b.timeSlot === timeSlot && b.status !== 'da_huy'
-    );
-    return bookings.length < maxPerSlot;
-  },
+    const order = this.getRentalOrderById(id);
 
-  createFittingBooking(userId, data) {
-    const { customerName, customerPhone, products, preferredDate, timeSlot, notes } = data;
-    if (!customerName || !preferredDate || !timeSlot) return { error: 'Thiếu thông tin bắt buộc' };
-    if (!this.checkSlotAvailability(preferredDate, timeSlot)) {
-      return { error: 'Khung giờ này đã đầy, vui lòng chọn khung giờ khác' };
+    if (!order) {
+      return { error: 'Không tìm thấy đơn thuê' };
     }
-    const booking = StorageService.save('crb_fitting_bookings', {
-      bookingRef: StorageService.generateOrderRef('FB'),
-      userId, customerName, customerPhone: customerPhone || '',
-      products: products || [], preferredDate, timeSlot,
-      status: 'cho_xac_nhan', notes: notes || ''
+
+    this.updateRentalOrder(id, {
+      status: 'da_tra_do',
+      note: 'Hoàn thành đơn thuê'
     });
-    return { success: true, booking };
+
+    // =========================
+    // TÍCH ĐIỂM
+    // =========================
+
+    if (window.CustomerModule?.addPoints) {
+
+      const config = CustomerModule.getPointConfig
+        ? CustomerModule.getPointConfig()
+        : {
+            moneyPerPoint: 10000
+          };
+
+      const earnedPoints = Math.floor(
+        Number(order.totalAmount || 0) /
+        Number(config.moneyPerPoint || 10000)
+      );
+
+      if (earnedPoints > 0) {
+
+        CustomerModule.addPoints(
+          order.userId,
+          earnedPoints,
+          `Tích điểm từ đơn thuê ${order.orderCode}`
+        );
+      }
+    }
+
+    return {
+      success: true
+    };
   },
+
+  // =========================
+  // ĐẶT LỊCH THỬ ĐỒ
+  // =========================
 
   getFittingBookings(filters = {}) {
-    let bookings = StorageService.getAll('crb_fitting_bookings');
-    if (filters.userId) bookings = bookings.filter(b => b.userId === filters.userId);
-    if (filters.status) bookings = bookings.filter(b => b.status === filters.status);
-    if (filters.date) bookings = bookings.filter(b => b.preferredDate === filters.date);
-    return bookings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    let bookings = StorageService.getAll('crb_fitting_bookings')
+      .filter(b => !b.deleted);
+
+    if (filters.userId) {
+      bookings = bookings.filter(
+        b => b.userId === filters.userId
+      );
+    }
+
+    if (filters.status) {
+      bookings = bookings.filter(
+        b => b.status === filters.status
+      );
+    }
+
+    bookings.sort((a, b) =>
+      new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    return bookings;
   },
 
-  getFittingBookingById(id) {
-    return StorageService.getById('crb_fitting_bookings', id);
+  createFittingBooking(data) {
+
+    const {
+      userId,
+      customerName,
+      customerPhone,
+      bookingDate,
+      bookingTime,
+      productId,
+      productName,
+      note
+    } = data;
+
+    if (
+      !customerName ||
+      !customerPhone ||
+      !bookingDate ||
+      !bookingTime
+    ) {
+      return {
+        error: 'Thiếu thông tin đặt lịch'
+      };
+    }
+
+    // kiểm tra trùng lịch
+    const exists = this.getFittingBookings()
+      .find(b =>
+        b.bookingDate === bookingDate &&
+        b.bookingTime === bookingTime &&
+        b.status !== 'da_huy'
+      );
+
+    if (exists) {
+      return {
+        error: 'Khung giờ đã được đặt'
+      };
+    }
+
+    const booking = StorageService.save(
+      'crb_fitting_bookings',
+      {
+        userId,
+
+        customerName,
+        customerPhone,
+
+        bookingDate,
+        bookingTime,
+
+        productId,
+        productName,
+
+        note: note || '',
+
+        status: 'cho_xac_nhan',
+
+        createdAt: new Date().toISOString()
+      }
+    );
+
+    return {
+      success: true,
+      booking
+    };
   },
 
   updateFittingBooking(id, changes) {
-    if (changes.preferredDate && changes.timeSlot) {
-      if (!this.checkSlotAvailability(changes.preferredDate, changes.timeSlot)) {
-        return { error: 'Khung giờ này đã đầy' };
-      }
+
+    const existing = StorageService.getById(
+      'crb_fitting_bookings',
+      id
+    );
+
+    if (!existing) {
+      return {
+        error: 'Không tìm thấy lịch thử'
+      };
     }
-    StorageService.update('crb_fitting_bookings', id, changes);
-    return { success: true };
+
+    StorageService.update(
+      'crb_fitting_bookings',
+      id,
+      changes
+    );
+
+    return {
+      success: true
+    };
   },
 
   cancelFittingBooking(id) {
-    StorageService.update('crb_fitting_bookings', id, { status: 'da_huy' });
-    return { success: true };
+
+    return this.updateFittingBooking(id, {
+      status: 'da_huy'
+    });
   },
 
-  // ===== RETURN =====
-  initiateReturn(orderId, returnAddress) {
-    const order = this.getRentalOrderById(orderId);
-    if (!order) return { error: 'Không tìm thấy đơn hàng' };
-    const penalty = this.calculateLatePenalty(orderId);
-    StorageService.update('crb_rental_orders', orderId, { returnAddress, latePenalty: penalty });
-    return { success: true, penalty };
-  },
+  // =========================
+  // DASHBOARD
+  // =========================
 
-  calculateLatePenalty(orderId) {
-    const order = this.getRentalOrderById(orderId);
-    if (!order) return 0;
-    const agreed = new Date(order.agreedReturnDate);
-    const actual = new Date();
-    if (actual <= agreed) return 0;
-    const overdueDays = Math.ceil((actual - agreed) / (1000 * 60 * 60 * 24));
-    const dailyRate = order.items?.reduce((s, i) => s + i.pricePerDay, 0) || 0;
-    return overdueDays * dailyRate;
+  getStatistics() {
+
+    const orders = this.getRentalOrders();
+
+    const revenue = orders
+      .filter(o => o.status !== 'da_huy')
+      .reduce((sum, o) =>
+        sum + Number(o.totalAmount || 0),
+      0);
+
+    const totalOrders = orders.length;
+
+    const activeOrders = orders.filter(o =>
+      ['cho_xac_nhan', 'da_xac_nhan', 'dang_thue']
+        .includes(o.status)
+    ).length;
+
+    const completedOrders = orders.filter(
+      o => o.status === 'da_tra_do'
+    ).length;
+
+    return {
+      revenue,
+      totalOrders,
+      activeOrders,
+      completedOrders
+    };
   }
 };
-
-

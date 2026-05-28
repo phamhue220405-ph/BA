@@ -3,28 +3,155 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Thanh to�n - LuxRent</title>
+  <title>Thanh toán - Diệu Linh</title>
+
   <link rel="stylesheet" href="../assets/css/main.css">
   <link rel="stylesheet" href="../assets/css/customer.css">
   <link rel="stylesheet" href="../assets/css/components.css">
+
+  <style>
+    .checkout-layout{
+      display:grid;
+      grid-template-columns:1fr 380px;
+      gap:32px;
+      align-items:start;
+    }
+
+    .checkout-section{
+      margin-bottom:20px;
+    }
+
+    .checkout-section h3{
+      font-size:18px;
+      font-weight:700;
+      margin-bottom:16px;
+    }
+
+    .checkout-product{
+      display:flex;
+      gap:14px;
+      padding:14px 0;
+      border-bottom:1px solid var(--gray-100);
+    }
+
+    .checkout-product:last-child{
+      border-bottom:none;
+    }
+
+    .checkout-product img{
+      width:76px;
+      height:96px;
+      object-fit:cover;
+      border-radius:10px;
+      background:var(--gray-100);
+    }
+
+    .checkout-product-name{
+      font-weight:700;
+      margin-bottom:6px;
+    }
+
+    .checkout-product-meta{
+      font-size:13px;
+      color:var(--gray-500);
+      line-height:1.7;
+    }
+
+    .summary-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:10px 0;
+      border-bottom:1px solid var(--gray-100);
+      font-size:14px;
+    }
+
+    .summary-row.total{
+      border-bottom:none;
+      font-size:18px;
+      font-weight:800;
+      color:var(--primary);
+      padding-top:16px;
+    }
+
+    .loyalty-box{
+      background:#fff7fb;
+      border:1px solid #ead2e5;
+      border-radius:14px;
+      padding:14px;
+      margin-bottom:16px;
+    }
+
+    .payment-option{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:12px;
+      border:1px solid var(--gray-200);
+      border-radius:10px;
+      margin-bottom:10px;
+      cursor:pointer;
+    }
+
+    .payment-option input{
+      width:auto;
+    }
+
+    .form-row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+    }
+
+    @media(max-width:900px){
+      .checkout-layout{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
 </head>
+
 <body>
   <nav class="navbar">
     <div class="navbar-inner">
-      <a href="/index.html" class="navbar-brand"><img src="/assets/images/logo.png" alt="LuxRent" class="site-logo"></a>
+      <a href="/index.html" class="navbar-brand">
+        <img src="/assets/images/logo.png" alt="Diệu Linh" class="site-logo">
+      </a>
+
+      <div class="navbar-nav">
+        <a href="/index.html" class="nav-link">Trang chủ</a>
+        <a href="/customer/products.html" class="nav-link">Sản phẩm</a>
+        <a href="/customer/fitting-booking.html" class="nav-link">Đặt lịch thử</a>
+      </div>
+
       <div class="navbar-actions">
-      <a href="/customer/cart.html" class="cart-btn">🛒 Giỏ hàng <span class="cart-badge" style="display:none">0</span></a>
+        <a href="/customer/cart.html" class="cart-btn">
+          🛒 Giỏ hàng <span class="cart-badge" style="display:none">0</span>
+        </a>
+
         <div class="user-menu" id="userMenu">
-          <button class="user-btn" onclick="toggleUserMenu()"><span id="userMenuLabel">??</span> ?</button>
+          <button class="user-btn" onclick="toggleUserMenu()">
+            <span id="userMenuLabel">👤</span> ▾
+          </button>
+
           <div class="user-dropdown" id="userDropdown" style="display:none">
-            <div id="authLinks"><a href="/customer/profile.html">?? H? so</a><a href="/customer/orders.html">?? �on h�ng</a><hr><a href="#" onclick="doLogout()">?? �ang xu?t</a></div>
+            <div id="authLinks">
+              <a href="/customer/profile.html">👤 Hồ sơ</a>
+              <a href="/customer/orders.html">📦 Đơn hàng</a>
+              <hr>
+              <a href="#" onclick="doLogout()">🚪 Đăng xuất</a>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </nav>
 
-  <div class="page-header"><div class="container"><h1>Thanh toán đơn thuê</h1></div></div>
+  <div class="page-header">
+    <div class="container">
+      <h1>Thanh toán</h1>
+    </div>
+  </div>
 
   <section class="section">
     <div class="container">
@@ -37,210 +164,345 @@
   <script src="../assets/js/auth.js"></script>
   <script src="../assets/js/product.js"></script>
   <script src="../assets/js/cart.js"></script>
+  <script src="../assets/js/customer.js"></script>
   <script src="../assets/js/order.js"></script>
-  <script src="../assets/js/payment.js"></script>
-  <script src="../assets/js/shipping.js"></script>
   <script src="../assets/js/seed.js"></script>
+
   <script>
     const session = AuthModule.requireAuth('/customer/login.html?redirect=/customer/checkout.html');
-    if (session) { document.getElementById('userMenuLabel').textContent = '?? ' + session.fullName; CartModule.updateCartBadge(session.userId); }
-    function toggleUserMenu() { const dd = document.getElementById('userDropdown'); dd.style.display = dd.style.display === 'none' ? 'block' : 'none'; }
-    document.addEventListener('click', e => { if (!document.getElementById('userMenu').contains(e.target)) document.getElementById('userDropdown').style.display = 'none'; });
-    function doLogout() { AuthModule.logout(); }
 
-    let selectedPayment = '', selectedShipping = '', currentOrderId = null, discountAmount = 0;
+    let usedPoints = 0;
+    let pointDiscount = 0;
+
+    if (session) {
+      document.getElementById('userMenuLabel').textContent = '👤 ' + session.fullName;
+      CartModule.updateCartBadge(session.userId);
+    }
+
+    function toggleUserMenu() {
+      const dd = document.getElementById('userDropdown');
+      dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    }
+
+    document.addEventListener('click', e => {
+      const userMenu = document.getElementById('userMenu');
+      if (userMenu && !userMenu.contains(e.target)) {
+        document.getElementById('userDropdown').style.display = 'none';
+      }
+    });
+
+    function doLogout() {
+      AuthModule.logout();
+    }
+
+    function getCustomer() {
+      return CustomerModule.getById(session.userId);
+    }
+
+    function getPointConfig() {
+      return CustomerModule.getPointConfig
+        ? CustomerModule.getPointConfig()
+        : { moneyPerPoint: 10000, pointValue: 1000 };
+    }
+
+    function getCheckoutTotal() {
+      const totals = CartModule.getTotal(session.userId);
+      const finalTotal = Math.max(0, totals.total - pointDiscount);
+
+      return {
+        ...totals,
+        pointDiscount,
+        finalTotal
+      };
+    }
 
     function renderCheckout() {
       if (!session) return;
-      const items = CartModule.getCart(session.userId);
-      if (!items.length) { window.location.href = '/customer/cart.html'; return; }
-      const totals = CartModule.getTotal(session.userId);
-      const shippingMethods = ShippingModule.getActive();
-      const user = StorageService.getById('crb_users', session.userId);
 
-      document.getElementById('checkoutContent').innerHTML = `
+      const items = CartModule.getCart(session.userId);
+      const customer = getCustomer();
+      const config = getPointConfig();
+      const totals = getCheckoutTotal();
+      const container = document.getElementById('checkoutContent');
+
+      if (!items.length) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">🛒</div>
+            <div class="empty-state-title">Giỏ hàng trống</div>
+            <div class="empty-state-desc">Bạn cần thêm sản phẩm trước khi thanh toán</div>
+            <br>
+            <a href="/customer/products.html" class="btn btn-primary">Xem sản phẩm</a>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
         <div class="checkout-layout">
           <div>
-            <!-- Delivery Info -->
-            <div class="checkout-section">
-              <h3>?? Th�ng tin giao h�ng</h3>
+            <div class="card checkout-section" style="padding:24px">
+              <h3>Thông tin khách hàng</h3>
+
               <div class="form-row">
-                <div class="form-group"><label>Ngu?i nh?n *</label><input type="text" id="recipientName" class="form-control" value="${user?.fullName || ''}"></div>
-                <div class="form-group"><label>S? di?n tho?i *</label><input type="text" id="recipientPhone" class="form-control" value="${user?.phone || ''}"></div>
+                <div class="form-group">
+                  <label>Họ và tên *</label>
+                  <input type="text" id="fullName" class="form-control" value="${customer?.fullName || session.fullName || ''}">
+                </div>
+
+                <div class="form-group">
+                  <label>Số điện thoại *</label>
+                  <input type="tel" id="phone" class="form-control" value="${customer?.phone || ''}">
+                </div>
               </div>
-              <div class="form-group"><label>�?a ch? giao h�ng *</label><input type="text" id="deliveryAddress" class="form-control" value="${user?.address || ''}" placeholder="S? nh�, du?ng, phu?ng, qu?n, t?nh/th�nh"></div>
-              <div class="form-group"><label>Ng�y giao h�ng mong mu?n</label><input type="date" id="deliveryDate" class="form-control" min="${new Date(Date.now()+86400000).toISOString().slice(0,10)}"></div>
-            </div>
 
-            <!-- Shipping -->
-            <div class="checkout-section">
-              <h3>?? Phuong th?c v?n chuy?n</h3>
-              ${shippingMethods.length ? shippingMethods.map(m => `
-                <label style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--gray-200);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:8px;transition:border-color 0.2s" onclick="selectShipping('${m.id}',this)">
-                  <input type="radio" name="shipping" value="${m.id}" style="display:none">
-                  <div style="flex:1"><div style="font-weight:600">${m.name}</div><div style="font-size:13px;color:var(--gray-500)">${m.deliveryTime ? 'Dự kiến ' + m.deliveryTime : ''}</div></div>
-                  <div style="font-weight:700;color:var(--primary)">${m.costs && m.costs[0] ? formatCurrency(m.costs[0].cost) : 'Miễn phí'}</div>
-                </label>`).join('') : '<p style="color:var(--gray-400)">Kh�ng c� phuong th?c v?n chuy?n</p>'}
-            </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="email" class="form-control" value="${customer?.email || ''}">
+              </div>
 
-            <!-- Payment -->
-            <div class="checkout-section">
-              <h3>?? Phuong th?c thanh to�n</h3>
-              <div class="payment-methods">
-                <div class="payment-method" onclick="selectPayment('e_wallet',this)">
-                  <div class="payment-method-icon">??</div>
-                  <div class="payment-method-name">V� di?n t?</div>
-                </div>
-                <div class="payment-method" onclick="selectPayment('card',this)">
-                  <div class="payment-method-icon">??</div>
-                  <div class="payment-method-name">Th? ng�n h�ng</div>
-                </div>
-                <div class="payment-method" onclick="selectPayment('bank_transfer',this)">
-                  <div class="payment-method-icon">??</div>
-                  <div class="payment-method-name">Chuy?n kho?n</div>
-                </div>
+              <div class="form-group">
+                <label>Địa chỉ nhận đồ</label>
+                <input type="text" id="address" class="form-control" value="${customer?.address || ''}" placeholder="Nhập địa chỉ nhận trang phục">
               </div>
             </div>
 
-            <!-- Bank Account for Refund -->
-            <div class="checkout-section">
-              <h3>?? T�i kho?n nh?n ho�n c?c</h3>
-              <div class="form-row">
-                <div class="form-group"><label>T�n ng�n h�ng</label><input type="text" id="bankName" class="form-control" value="${user?.bankAccount?.bankName || ''}" placeholder="Vietcombank, Techcombank..."></div>
-                <div class="form-group"><label>S? t�i kho?n</label><input type="text" id="bankAccount" class="form-control" value="${user?.bankAccount?.accountNumber || ''}" placeholder="1234567890"></div>
-              </div>
+            <div class="card checkout-section" style="padding:24px">
+              <h3>Hình thức nhận đồ</h3>
+
+              <label class="payment-option">
+                <input type="radio" name="deliveryMethod" value="store" checked>
+                <span>Nhận tại cửa hàng</span>
+              </label>
+
+              <label class="payment-option">
+                <input type="radio" name="deliveryMethod" value="delivery">
+                <span>Giao hàng tận nơi</span>
+              </label>
+            </div>
+
+            <div class="card checkout-section" style="padding:24px">
+              <h3>Phương thức thanh toán</h3>
+
+              <label class="payment-option">
+                <input type="radio" name="paymentMethod" value="cod" checked>
+                <span>Thanh toán tại cửa hàng / khi nhận đồ</span>
+              </label>
+
+              <label class="payment-option">
+                <input type="radio" name="paymentMethod" value="bank">
+                <span>Chuyển khoản ngân hàng</span>
+              </label>
+
+              <label class="payment-option">
+                <input type="radio" name="paymentMethod" value="online">
+                <span>Thanh toán online</span>
+              </label>
+            </div>
+
+            <div class="card checkout-section" style="padding:24px">
+              <h3>Sản phẩm thuê</h3>
+
+              ${items.map(item => `
+                <div class="checkout-product">
+                  <img src="${item.productImage || 'https://via.placeholder.com/100x130?text=No+Image'}" alt="${item.productName}">
+
+                  <div style="flex:1">
+                    <div class="checkout-product-name">${item.productName}</div>
+
+                    <div class="checkout-product-meta">
+                      Size: ${item.size || '—'} | Màu: ${item.color || '—'}<br>
+                      Thời gian thuê: ${item.rentalStartDate} đến ${item.rentalEndDate}<br>
+                      ${item.rentalDays} ngày × ${formatCurrency(item.pricePerDay)}<br>
+                      Tiền cọc: ${formatCurrency(item.depositAmount)}
+                    </div>
+                  </div>
+
+                  <div style="font-weight:700;color:var(--primary)">
+                    ${formatCurrency(item.subtotal)}
+                  </div>
+                </div>
+              `).join('')}
             </div>
           </div>
 
-          <!-- Order Summary -->
           <div>
-            <div class="cart-summary card" style="padding:24px;position:sticky;top:90px">
-              <h3 style="font-size:18px;font-weight:700;margin-bottom:16px">�on h�ng c?a b?n</h3>
-              ${items.map(i => `<div style="display:flex;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--gray-100)">
-                <img src="${i.productImage || 'https://via.placeholder.com/60x80'}" style="width:50px;height:65px;object-fit:cover;border-radius:6px">
-                <div style="flex:1;font-size:13px">
-                  <div style="font-weight:600">${i.productName}</div>
-                  <div style="color:var(--gray-400)">${i.size} | ${i.color}</div>
-                  <div style="color:var(--gray-400)">${formatDate(i.rentalStartDate)} - ${formatDate(i.rentalEndDate)}</div>
-                  <div style="color:var(--primary);font-weight:600">${formatCurrency(i.subtotal)}</div>
-                </div>
-              </div>`).join('')}
+            <div class="card" style="padding:24px;position:sticky;top:20px">
+              <h3 style="font-size:18px;font-weight:700;margin-bottom:20px">
+                Tóm tắt thanh toán
+              </h3>
 
-              <div class="cart-summary-row"><span>Ti?n thu�</span><span>${formatCurrency(totals.rentalTotal)}</span></div>
-              <div class="cart-summary-row deposit"><span>?? Ti?n c?c</span><span>${formatCurrency(totals.depositTotal)}</span></div>
-              <div class="cart-summary-row" id="shippingRow" style="display:none"><span>Ph� v?n chuy?n</span><span id="shippingCostDisplay">0d</span></div>
-              <div class="cart-summary-row" id="discountRow" style="display:none;color:var(--success)"><span>?? Gi?m gi�</span><span id="discountDisplay">-0d</span></div>
-
-              <!-- Promo Code -->
-              <div style="margin:12px 0">
-                <div class="promo-input-group">
-                  <input type="text" id="promoCode" class="form-control" placeholder="M� gi?m gi�" style="font-size:13px">
-                  <button class="btn btn-secondary btn-sm" onclick="applyPromo()">�p d?ng</button>
+              <div class="loyalty-box">
+                <div style="font-size:13px;color:var(--gray-500);margin-bottom:4px">
+                  Điểm tích lũy hiện có
                 </div>
+
+                <div style="font-size:24px;font-weight:800;color:var(--primary);margin-bottom:8px">
+                  ${customer?.loyaltyPoints || 0} điểm
+                </div>
+
+                <div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">
+                  Quy đổi: 1 điểm = ${formatCurrency(config.pointValue || 0)}
+                </div>
+
+                <div style="display:flex;gap:8px">
+                  <input type="number" id="usePointsInput" class="form-control" min="0" max="${customer?.loyaltyPoints || 0}" placeholder="Nhập điểm">
+                  <button class="btn btn-secondary" onclick="applyPoints()">Áp dụng</button>
+                </div>
+
+                ${
+                  usedPoints > 0
+                  ? `<div style="font-size:13px;color:var(--success);margin-top:8px">
+                      Đã dùng ${usedPoints} điểm, giảm ${formatCurrency(pointDiscount)}
+                    </div>`
+                  : ''
+                }
               </div>
 
-              <div class="cart-summary-row total" id="totalDisplay"><span>T?ng c?ng</span><span>${formatCurrency(totals.total)}</span></div>
-              <div style="font-size:11px;color:var(--gray-400);margin-bottom:16px">* C?c ho�n tr? sau khi tr? d? d�ng h?n</div>
+              <div class="summary-row">
+                <span>Tiền thuê (${items.length} sản phẩm)</span>
+                <span>${formatCurrency(totals.rentalTotal)}</span>
+              </div>
 
-              <div id="checkoutError" class="alert alert-error" style="display:none"></div>
-              <button class="btn btn-primary btn-full btn-lg" onclick="placeOrder()">?? Thanh to�n ngay</button>
+              <div class="summary-row">
+                <span>Tiền đặt cọc</span>
+                <span>${formatCurrency(totals.depositTotal)}</span>
+              </div>
+
+              <div class="summary-row">
+                <span>Giảm từ điểm tích lũy</span>
+                <span>- ${formatCurrency(totals.pointDiscount)}</span>
+              </div>
+
+              <div class="summary-row total">
+                <span>Tổng thanh toán</span>
+                <span>${formatCurrency(totals.finalTotal)}</span>
+              </div>
+
+              <div style="font-size:12px;color:var(--gray-400);margin:12px 0 20px">
+                * Tiền cọc sẽ được hoàn trả sau khi khách trả đồ đúng hạn và sản phẩm không hư hỏng.
+              </div>
+
+              <button class="btn btn-primary btn-full btn-lg" onclick="placeOrder()">
+                Xác nhận đặt thuê
+              </button>
+
+              <a href="/customer/cart.html" class="btn btn-secondary btn-full" style="margin-top:10px;text-align:center">
+                ← Quay lại giỏ hàng
+              </a>
             </div>
           </div>
-        </div>`;
+        </div>
+      `;
     }
 
-    function selectPayment(method, el) {
-      selectedPayment = method;
-      document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
-      el.classList.add('selected');
-    }
+    function applyPoints() {
+      const customer = getCustomer();
+      const config = getPointConfig();
+      const input = document.getElementById('usePointsInput');
+      const points = Number(input.value);
 
-    function selectShipping(id, el) {
-      selectedShipping = id;
-      document.querySelectorAll('label[onclick^="selectShipping"]').forEach(l => l.style.borderColor = 'var(--gray-200)');
-      el.style.borderColor = 'var(--primary)';
-      const method = ShippingModule.getById(id);
-      const cost = method?.costs[0]?.cost || 0;
-      document.getElementById('shippingRow').style.display = 'flex';
-      document.getElementById('shippingCostDisplay').textContent = formatCurrency(cost);
-      updateTotal();
-    }
+      if (!points || points <= 0) {
+        Toast.show('Số điểm sử dụng không hợp lệ', 'warning');
+        return;
+      }
 
-    function applyPromo() {
-      const code = document.getElementById('promoCode').value.trim();
-      if (!code) return;
-      const items = CartModule.getCart(session.userId);
+      if (points > (customer?.loyaltyPoints || 0)) {
+        Toast.show('Bạn không đủ điểm để sử dụng', 'error');
+        return;
+      }
+
       const totals = CartModule.getTotal(session.userId);
-      const promos = StorageService.getAll('crb_promotions');
-      const now = new Date();
-      const promo = promos.find(p => p.code === code.toUpperCase() && p.isActive && new Date(p.startDate) <= now && new Date(p.endDate) >= now);
-      if (!promo) { Toast.show('M� gi?m gi� kh�ng h?p l? ho?c d� h?t h?n', 'error'); return; }
-      if (totals.rentalTotal < promo.minOrderValue) { Toast.show(`�on h�ng t?i thi?u ${formatCurrency(promo.minOrderValue)}`, 'warning'); return; }
-      discountAmount = promo.discountType === 'percentage' ? Math.floor(totals.rentalTotal * promo.discountValue / 100) : promo.discountValue;
-      document.getElementById('discountRow').style.display = 'flex';
-      document.getElementById('discountDisplay').textContent = '-' + formatCurrency(discountAmount);
-      Toast.show(`�p d?ng m� th�nh c�ng! Gi?m ${formatCurrency(discountAmount)}`, 'success');
-      updateTotal();
+      const discount = points * Number(config.pointValue || 0);
+
+      if (discount > totals.total) {
+        Toast.show('Số điểm sử dụng vượt quá tổng giá trị đơn hàng', 'error');
+        return;
+      }
+
+      usedPoints = points;
+      pointDiscount = discount;
+
+      Toast.show(`Đã áp dụng ${points} điểm`, 'success');
+      renderCheckout();
     }
 
-    function updateTotal() {
-      const items = CartModule.getCart(session.userId);
-      const totals = CartModule.getTotal(session.userId);
-      const shippingCost = selectedShipping ? (ShippingModule.getById(selectedShipping)?.costs[0]?.cost || 0) : 0;
-      const total = totals.total + shippingCost - discountAmount;
-      document.getElementById('totalDisplay').innerHTML = `<span>T?ng c?ng</span><span>${formatCurrency(total)}</span>`;
+    function validateCheckoutForm() {
+      const fullName = document.getElementById('fullName').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const email = document.getElementById('email').value.trim();
+
+      if (!fullName) return 'Vui lòng nhập họ tên';
+      if (!phone) return 'Vui lòng nhập số điện thoại';
+
+      if (!/^[0-9]{10}$/.test(phone)) {
+        return 'Số điện thoại phải gồm đúng 10 chữ số';
+      }
+
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return 'Email không đúng định dạng';
+      }
+
+      return '';
     }
 
     function placeOrder() {
-      const errEl = document.getElementById('checkoutError');
-      errEl.style.display = 'none';
-      const recipientName = document.getElementById('recipientName').value.trim();
-      const recipientPhone = document.getElementById('recipientPhone').value.trim();
-      const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
-      if (!recipientName || !recipientPhone || !deliveryAddress) { errEl.textContent = 'Vui l�ng di?n d?y d? th�ng tin giao h�ng'; errEl.style.display = 'flex'; return; }
-      if (!selectedPayment) { errEl.textContent = 'Vui l�ng ch?n phuong th?c thanh to�n'; errEl.style.display = 'flex'; return; }
+      const error = validateCheckoutForm();
+
+      if (error) {
+        Toast.show(error, 'error');
+        return;
+      }
 
       const items = CartModule.getCart(session.userId);
-      const shippingCost = selectedShipping ? (ShippingModule.getById(selectedShipping)?.costs[0]?.cost || 0) : 0;
-      const deliveryInfo = { recipientName, phone: recipientPhone, address: deliveryAddress, preferredDeliveryDate: document.getElementById('deliveryDate').value };
 
-      // Save bank account
-      const bankName = document.getElementById('bankName').value.trim();
-      const bankAccount = document.getElementById('bankAccount').value.trim();
-      if (bankName && bankAccount) {
-        StorageService.update('crb_users', session.userId, {
-          bankAccount: { bankName, accountNumber: bankAccount }
-        });
+      if (!items.length) {
+        Toast.show('Giỏ hàng trống', 'warning');
+        return;
       }
 
-      const orderResult = OrderModule.createRentalOrder(session.userId, items, deliveryInfo, selectedShipping, shippingCost);
-      if (orderResult.error) { errEl.textContent = orderResult.error; errEl.style.display = 'flex'; return; }
+      const totals = getCheckoutTotal();
 
-      // Apply discount
-      if (discountAmount > 0) {
-        const promoCode = document.getElementById('promoCode').value.trim();
-        StorageService.update('crb_rental_orders', orderResult.order.id, { discountAmount, promotionCode: promoCode, totalAmount: orderResult.order.totalAmount - discountAmount });
+      const fullName = document.getElementById('fullName').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const address = document.getElementById('address').value.trim();
+
+      const deliveryMethod = document.querySelector('input[name="deliveryMethod"]:checked').value;
+      const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+
+      const order = StorageService.save('crb_rental_orders', {
+        userId: session.userId,
+        customerName: fullName,
+        customerPhone: phone,
+        customerEmail: email,
+        customerAddress: address,
+        deliveryMethod,
+        paymentMethod,
+        items,
+        rentalTotal: totals.rentalTotal,
+        depositTotal: totals.depositTotal,
+        usedPoints,
+        pointDiscount,
+        totalAmount: totals.finalTotal,
+        status: 'cho_xac_nhan',
+        createdAt: new Date().toISOString()
+      });
+
+      if (usedPoints > 0) {
+        CustomerModule.usePoints(session.userId, usedPoints);
       }
 
-      // Process payment
-      PaymentModule.processPayment(orderResult.order.id, selectedPayment, orderResult.order.totalAmount);
       CartModule.clearCart(session.userId);
 
-      // Redirect to success
-      window.location.href = '/customer/orders.html?newOrder=' + orderResult.order.id;
+      Toast.show('Đặt thuê thành công', 'success');
+
+      setTimeout(() => {
+        window.location.href = '/customer/orders.html';
+      }, 800);
     }
 
     renderCheckout();
-
-    // If shipping methods are changed in another tab, re-render checkout so new costs show
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'crb_shipping_methods') {
-        renderCheckout();
-      }
-    });
   </script>
 </body>
 </html>
-
-
-

@@ -3,79 +3,189 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Khách hàng - LuxRent Admin</title>
+  <title>Khách hàng - Diệu Linh Admin</title>
+
   <link rel="stylesheet" href="../assets/css/main.css">
   <link rel="stylesheet" href="../assets/css/admin.css">
   <link rel="stylesheet" href="../assets/css/components.css">
+
   <style>
-    .detail-panel{position:fixed;top:0;right:-480px;width:480px;height:100vh;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,0.15);z-index:200;transition:right 0.3s;display:flex;flex-direction:column}
+    .detail-panel{position:fixed;top:0;right:-520px;width:520px;height:100vh;background:#fff;box-shadow:-4px 0 24px rgba(0,0,0,0.15);z-index:200;transition:right 0.3s;display:flex;flex-direction:column}
     .detail-panel.open{right:0}
     .detail-panel-header{padding:20px 24px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center}
     .detail-panel-body{flex:1;overflow-y:auto;padding:24px}
-    .detail-panel-footer{padding:16px 24px;border-top:1px solid var(--gray-200);display:flex;gap:10px;justify-content:flex-end}
+    .detail-panel-footer{padding:16px 24px;border-top:1px solid var(--gray-200);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
     .panel-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:199}
     .panel-overlay.show{display:block}
-    .detail-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);font-size:14px}
-    .detail-row:last-child{border-bottom:none}
+    .detail-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gray-100);font-size:14px;gap:16px}
     .detail-label{color:var(--gray-500);font-weight:500}
     .detail-value{font-weight:600;color:var(--gray-800);text-align:right}
+    .history-box{padding:10px 12px;border:1px solid var(--gray-200);border-radius:10px;margin-bottom:8px;font-size:13px;background:#fafafa}
+    .section-title{font-size:15px;font-weight:700;margin:20px 0 10px}
+    .loyalty-card{background:#f8f5ff;border:1px solid #e8ddff;border-radius:14px;padding:14px;margin-bottom:16px}
+    .form-hint{font-size:12px;color:var(--gray-400);margin-top:4px}
+    .modal{max-height:90vh;overflow-y:auto}
   </style>
 </head>
+
 <body class="admin-body">
   <div class="admin-layout">
     <div id="sidebarContainer"></div>
+
     <main class="admin-main">
       <div class="admin-topbar">
         <div class="topbar-title">👥 Quản lý khách hàng</div>
         <div class="topbar-actions" id="topbarActions"></div>
       </div>
+
       <div class="admin-content">
         <div class="tabs admin-tabs" style="margin-bottom:20px">
           <button class="tab-btn active" onclick="switchView('all',this)">Tất cả</button>
           <button class="tab-btn" onclick="switchView('loyal',this)">⭐ Khách thân thiết</button>
+          <button class="tab-btn" onclick="switchView('locked',this)">🔒 Đã khóa</button>
         </div>
+
         <div class="table-container">
           <div class="table-header">
-            <div class="table-search"><input type="text" id="searchInput" placeholder="Tìm tên, email, SĐT..." oninput="applyFilters()"></div>
+            <div class="table-search">
+              <input type="text" id="searchInput" placeholder="Tìm tên, email, SĐT..." oninput="applyFilters()">
+            </div>
           </div>
+
           <div style="overflow-x:auto">
             <table class="admin-table">
-              <thead><tr><th>Họ tên</th><th>Email</th><th>Số điện thoại</th><th>Điểm tích lũy</th><th>Trạng thái</th><th>Ngày tạo</th><th>Chi tiết</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Họ tên</th>
+                  <th>Email</th>
+                  <th>Số điện thoại</th>
+                  <th>Điểm tích lũy</th>
+                  <th>Trạng thái</th>
+                  <th>Ngày tạo</th>
+                  <th>Chi tiết</th>
+                </tr>
+              </thead>
               <tbody id="customersTable"></tbody>
             </table>
           </div>
+
           <div id="pagination"></div>
         </div>
       </div>
     </main>
   </div>
 
-  <!-- Detail Panel -->
   <div class="panel-overlay" id="panelOverlay" onclick="closePanel()"></div>
+
   <div class="detail-panel" id="detailPanel">
     <div class="detail-panel-header">
       <div style="font-weight:700;font-size:16px" id="panelTitle">Chi tiết khách hàng</div>
       <button onclick="closePanel()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--gray-400)">✕</button>
     </div>
+
     <div class="detail-panel-body" id="panelBody"></div>
     <div class="detail-panel-footer" id="panelFooter"></div>
   </div>
 
-  <!-- Add/Edit Modal -->
   <div id="custModal" class="modal-overlay" style="display:none">
     <div class="modal">
-      <div class="modal-header"><div class="modal-title" id="modalTitle">Thêm khách hàng</div><button class="modal-close" onclick="closeModal()">✕</button></div>
-      <input type="hidden" id="editId">
-      <div class="form-group"><label>Họ và tên *</label><input type="text" id="cName" class="form-control"></div>
-      <div class="form-row">
-        <div class="form-group"><label>Email</label><input type="email" id="cEmail" class="form-control"></div>
-        <div class="form-group"><label>Số điện thoại</label><input type="tel" id="cPhone" class="form-control"></div>
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">Thêm khách hàng</div>
+        <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
-      <div class="form-group"><label>Địa chỉ</label><input type="text" id="cAddress" class="form-control"></div>
+
+      <input type="hidden" id="editId">
+
+      <div class="form-group">
+        <label>Họ và tên *</label>
+        <input type="text" id="cName" class="form-control">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="cEmail" class="form-control">
+        </div>
+
+        <div class="form-group">
+          <label>Số điện thoại *</label>
+          <input type="tel" id="cPhone" class="form-control" maxlength="10">
+          <div class="form-hint">Số điện thoại gồm đúng 10 chữ số</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Địa chỉ</label>
+        <input type="text" id="cAddress" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label>Ghi chú khách hàng</label>
+        <textarea id="cNote" class="form-control" rows="3" placeholder="Ví dụ: khách thường thuê váy dạ hội, cần tư vấn kỹ size..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>Trạng thái khách hàng</label>
+        <select id="cStatus" class="form-control">
+          <option value="active">Hoạt động</option>
+          <option value="locked">Đã khóa</option>
+        </select>
+      </div>
+
       <div id="modalError" class="alert alert-error" style="display:none"></div>
+
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
         <button class="btn btn-primary" onclick="saveCust()" style="background:var(--admin-primary)">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pointConfigModal" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Cấu hình tích điểm</div>
+        <button class="modal-close" onclick="closePointConfig()">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label>Số tiền quy đổi 1 điểm</label>
+        <input type="number" id="moneyPerPoint" class="form-control" min="1000">
+        <div class="form-hint">Ví dụ: 10.000 VNĐ = 1 điểm</div>
+      </div>
+
+      <div class="form-group">
+        <label>Giá trị giảm của 1 điểm</label>
+        <input type="number" id="pointValue" class="form-control" min="100">
+        <div class="form-hint">Ví dụ: 1 điểm = giảm 1.000 VNĐ</div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closePointConfig()">Hủy</button>
+        <button class="btn btn-primary" onclick="savePointConfig()" style="background:var(--admin-primary)">Lưu cấu hình</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="usePointModal" class="modal-overlay" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Sử dụng điểm tích lũy</div>
+        <button class="modal-close" onclick="closeUsePointModal()">✕</button>
+      </div>
+
+      <input type="hidden" id="pointCustomerId">
+
+      <div class="form-group">
+        <label>Số điểm muốn sử dụng</label>
+        <input type="number" id="usePointAmount" class="form-control" min="1">
+      </div>
+
+      <div id="pointError" class="alert alert-error" style="display:none"></div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeUsePointModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="confirmUsePoints()" style="background:var(--admin-primary)">Áp dụng</button>
       </div>
     </div>
   </div>
@@ -87,14 +197,29 @@
   <script src="../assets/js/customer.js"></script>
   <script src="../assets/js/admin-common.js"></script>
   <script src="../assets/js/seed.js"></script>
+
   <script>
     const session = AuthModule.requireAdminAuth();
     if (!session) throw new Error('No session');
-    document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('customers', session);
-    const _canEdit = canEdit('customers', session.role);
-    if (_canEdit) document.getElementById('topbarActions').innerHTML = '<button class="topbar-btn topbar-btn-primary" onclick="openModal()">+ Thêm khách hàng</button>';
 
-    let currentPage = 1, viewMode = 'all';
+    document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('customers', session);
+
+    const _canEdit = canEdit('customers', session.role);
+    const _isManager = ['manager', 'admin', 'quan_ly'].includes(session.role);
+
+    if (_canEdit) {
+      document.getElementById('topbarActions').innerHTML = `
+        <button class="topbar-btn" onclick="openPointConfig()">⚙ Cấu hình điểm</button>
+        <button class="topbar-btn topbar-btn-primary" onclick="openModal()">+ Thêm khách hàng</button>
+      `;
+    }
+
+    let currentPage = 1;
+    let viewMode = 'all';
+
+    function getActorName() {
+      return session.fullName || session.email || session.username || session.role || 'system';
+    }
 
     function switchView(mode, el) {
       viewMode = mode;
@@ -105,63 +230,157 @@
 
     function applyFilters() {
       const search = document.getElementById('searchInput').value;
-      const customers = CustomerModule.getAll({ search, sortByPoints: viewMode === 'loyal' });
-      currentPage = 1; renderTable(customers);
+
+      const filters = {
+        search,
+        sortByPoints: viewMode === 'loyal',
+        status: viewMode === 'locked' ? 'locked' : 'active'
+      };
+
+      let customers = CustomerModule.getAll(filters);
+
+      if (viewMode === 'loyal') {
+        customers = customers.filter(c => (c.loyaltyPoints || 0) > 0);
+      }
+
+      currentPage = 1;
+      renderTable(customers);
     }
 
     function renderTable(customers) {
       const paged = paginate(customers, currentPage);
       const tbody = document.getElementById('customersTable');
-      if (!paged.items.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)">Không có khách hàng</td></tr>'; }
-      else tbody.innerHTML = paged.items.map(c => `
-        <tr>
-          <td style="font-weight:600">${c.fullName}</td>
-          <td>${c.email||'—'}</td>
-          <td>${c.phone||'—'}</td>
-          <td><span style="font-weight:700;color:var(--admin-primary)">${c.loyaltyPoints||0}</span> điểm</td>
-          <td><span class="status-badge status-${c.isActive?'da_xac_nhan':'da_huy'}">${c.isActive?'Hoạt động':'Đã khóa'}</span></td>
-          <td>${formatDate(c.createdAt)}</td>
-          <td><button class="action-btn action-btn-view" onclick="openDetail('${c.id}')">Xem chi tiết</button></td>
-        </tr>`).join('');
+
+      if (!paged.items.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)">
+              Không có khách hàng
+            </td>
+          </tr>
+        `;
+      } else {
+        tbody.innerHTML = paged.items.map(c => `
+          <tr>
+            <td style="font-weight:600">
+              ${c.fullName || '—'}
+              ${(c.loyaltyPoints || 0) >= 100 ? '<span class="status-badge status-da_xac_nhan" style="margin-left:6px">Thân thiết</span>' : ''}
+            </td>
+            <td>${c.email || '—'}</td>
+            <td>${c.phone || '—'}</td>
+            <td><span style="font-weight:700;color:var(--admin-primary)">${c.loyaltyPoints || 0}</span> điểm</td>
+            <td>
+              <span class="status-badge status-${c.isActive !== false ? 'da_xac_nhan' : 'da_huy'}">
+                ${c.isActive !== false ? 'Hoạt động' : 'Đã khóa'}
+              </span>
+            </td>
+            <td>${formatDate(c.createdAt)}</td>
+            <td><button class="action-btn action-btn-view" onclick="openDetail('${c.id}')">Xem chi tiết</button></td>
+          </tr>
+        `).join('');
+      }
+
       renderPagination('pagination', paged, 'goPage');
     }
 
-    function goPage(p) { currentPage = p; applyFilters(); }
+    function goPage(p) {
+      currentPage = p;
+      applyFilters();
+    }
 
     function openDetail(id) {
       const c = CustomerModule.getById(id);
       if (!c) return;
-      document.getElementById('panelTitle').textContent = c.fullName;
+
+      document.getElementById('panelTitle').textContent = c.fullName || 'Chi tiết khách hàng';
+
+      const editHistory = c.editHistory || [];
+      const pointHistory = c.pointHistory || [];
+
       document.getElementById('panelBody').innerHTML = `
         <div style="text-align:center;margin-bottom:20px">
           <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--admin-primary),var(--admin-secondary));display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;margin:0 auto 8px">👤</div>
-          <div style="font-weight:700;font-size:18px">${c.fullName}</div>
-          <div style="font-size:13px;color:var(--gray-400)">${c.email||c.phone}</div>
+          <div style="font-weight:700;font-size:18px">${c.fullName || '—'}</div>
+          <div style="font-size:13px;color:var(--gray-400)">${c.email || c.phone || '—'}</div>
         </div>
-        <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${c.email||'—'}</span></div>
-        <div class="detail-row"><span class="detail-label">Số điện thoại</span><span class="detail-value">${c.phone||'—'}</span></div>
-        <div class="detail-row"><span class="detail-label">Địa chỉ</span><span class="detail-value" style="font-weight:400">${c.address||'—'}</span></div>
-        <div class="detail-row"><span class="detail-label">Điểm tích lũy</span><span class="detail-value" style="color:var(--admin-primary)">${c.loyaltyPoints||0} điểm</span></div>
-        <div class="detail-row"><span class="detail-label">Trạng thái</span><span class="detail-value"><span class="status-badge status-${c.isActive?'da_xac_nhan':'da_huy'}">${c.isActive?'Hoạt động':'Đã khóa'}</span></span></div>
-        <div class="detail-row"><span class="detail-label">Ngân hàng</span><span class="detail-value" style="font-weight:400">${c.bankAccount?.bankName?c.bankAccount.bankName+' - '+c.bankAccount.accountNumber:'Chưa đăng ký'}</span></div>
-        <div class="detail-row"><span class="detail-label">Ngày tạo</span><span class="detail-value">${formatDate(c.createdAt)}</span></div>`;
+
+        <div class="loyalty-card">
+          <div style="font-size:13px;color:var(--gray-500);margin-bottom:4px">Điểm tích lũy hiện có</div>
+          <div style="font-size:26px;font-weight:800;color:var(--admin-primary)">${c.loyaltyPoints || 0} điểm</div>
+        </div>
+
+        <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">${c.email || '—'}</span></div>
+        <div class="detail-row"><span class="detail-label">Số điện thoại</span><span class="detail-value">${c.phone || '—'}</span></div>
+        <div class="detail-row"><span class="detail-label">Địa chỉ</span><span class="detail-value" style="font-weight:400">${c.address || '—'}</span></div>
+        <div class="detail-row"><span class="detail-label">Ghi chú</span><span class="detail-value" style="font-weight:400">${c.note || '—'}</span></div>
+        <div class="detail-row">
+          <span class="detail-label">Trạng thái</span>
+          <span class="detail-value">
+            <span class="status-badge status-${c.isActive !== false ? 'da_xac_nhan' : 'da_huy'}">
+              ${c.isActive !== false ? 'Hoạt động' : 'Đã khóa'}
+            </span>
+          </span>
+        </div>
+        <div class="detail-row"><span class="detail-label">Ngày tạo</span><span class="detail-value">${formatDate(c.createdAt)}</span></div>
+
+        <div class="section-title">Lịch sử chỉnh sửa</div>
+        ${
+          editHistory.length
+          ? editHistory.slice().reverse().map(h => `
+            <div class="history-box">
+              <b>${h.action || 'Cập nhật thông tin'}</b><br>
+              <span style="color:var(--gray-500)">Thời gian: ${formatDate(h.changedAt)}</span><br>
+              <span style="color:var(--gray-500)">Người thực hiện: ${h.changedBy || '—'}</span>
+            </div>
+          `).join('')
+          : '<div style="font-size:13px;color:var(--gray-400)">Chưa có lịch sử chỉnh sửa</div>'
+        }
+
+        <div class="section-title">Lịch sử tích điểm</div>
+        ${
+          pointHistory.length
+          ? pointHistory.slice().reverse().map(p => `
+            <div class="history-box">
+              <b>${p.points > 0 ? '+' : ''}${p.points} điểm</b><br>
+              <span style="color:var(--gray-500)">${p.reason || 'Giao dịch điểm'}</span><br>
+              ${p.discount ? `<span style="color:var(--gray-500)">Giảm: ${formatCurrency(p.discount)}</span><br>` : ''}
+              <span style="color:var(--gray-500)">Thời gian: ${formatDate(p.createdAt)}</span>
+            </div>
+          `).join('')
+          : '<div style="font-size:13px;color:var(--gray-400)">Chưa có lịch sử tích điểm</div>'
+        }
+      `;
+
       const footer = document.getElementById('panelFooter');
-      if (_canEdit) {
-        footer.innerHTML = `
-          <button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')">Xóa</button>
-          <button class="btn btn-primary btn-sm" onclick="openEdit('${c.id}')" style="background:var(--admin-primary)">Chỉnh sửa</button>`;
-      } else {
+
+      if (!_canEdit) {
         footer.innerHTML = '<span style="font-size:13px;color:var(--gray-400)">Bạn chỉ có quyền xem</span>';
+      } else if (c.isActive === false) {
+        footer.innerHTML = _isManager
+          ? `<button class="btn btn-primary btn-sm" onclick="restoreCustomer('${c.id}')" style="background:var(--admin-primary)">Khôi phục</button>`
+          : '<span style="font-size:13px;color:var(--gray-400)">Bạn không có quyền khôi phục</span>';
+      } else {
+        footer.innerHTML = `
+          <button class="btn btn-secondary btn-sm" onclick="openUsePointModal('${c.id}')">Dùng điểm</button>
+          <button class="btn btn-secondary btn-sm" onclick="addPointManual('${c.id}')">+ Cộng điểm</button>
+          ${_isManager ? `<button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')">Xóa/Khóa</button>` : ''}
+          <button class="btn btn-primary btn-sm" onclick="openEdit('${c.id}')" style="background:var(--admin-primary)">Chỉnh sửa</button>
+        `;
       }
+
       document.getElementById('detailPanel').classList.add('open');
       document.getElementById('panelOverlay').classList.add('show');
     }
 
-    function closePanel() { document.getElementById('detailPanel').classList.remove('open'); document.getElementById('panelOverlay').classList.remove('show'); }
+    function closePanel() {
+      document.getElementById('detailPanel').classList.remove('open');
+      document.getElementById('panelOverlay').classList.remove('show');
+    }
 
     function openModal() {
       document.getElementById('editId').value = '';
-      ['cName','cEmail','cPhone','cAddress'].forEach(id => document.getElementById(id).value = '');
+      ['cName','cEmail','cPhone','cAddress','cNote'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('cStatus').value = 'active';
       document.getElementById('modalTitle').textContent = 'Thêm khách hàng';
       document.getElementById('modalError').style.display = 'none';
       document.getElementById('custModal').style.display = 'flex';
@@ -169,43 +388,170 @@
 
     function openEdit(id) {
       closePanel();
+
       const c = CustomerModule.getById(id);
       if (!c) return;
+
       document.getElementById('editId').value = id;
-      document.getElementById('cName').value = c.fullName;
-      document.getElementById('cEmail').value = c.email;
-      document.getElementById('cPhone').value = c.phone;
-      document.getElementById('cAddress').value = c.address;
+      document.getElementById('cName').value = c.fullName || '';
+      document.getElementById('cEmail').value = c.email || '';
+      document.getElementById('cPhone').value = c.phone || '';
+      document.getElementById('cAddress').value = c.address || '';
+      document.getElementById('cNote').value = c.note || '';
+      document.getElementById('cStatus').value = c.isActive === false ? 'locked' : 'active';
+
       document.getElementById('modalTitle').textContent = 'Sửa khách hàng';
       document.getElementById('modalError').style.display = 'none';
       document.getElementById('custModal').style.display = 'flex';
     }
 
-    function closeModal() { document.getElementById('custModal').style.display = 'none'; }
+    function closeModal() {
+      document.getElementById('custModal').style.display = 'none';
+    }
 
     function saveCust() {
       const errEl = document.getElementById('modalError');
       const id = document.getElementById('editId').value;
-      const data = { fullName: document.getElementById('cName').value.trim(), email: document.getElementById('cEmail').value.trim(), phone: document.getElementById('cPhone').value.trim(), address: document.getElementById('cAddress').value.trim() };
-      if (!data.fullName) { errEl.textContent = 'Vui lòng nhập họ tên'; errEl.style.display = 'flex'; return; }
-      const result = id ? CustomerModule.update(id, data) : CustomerModule.create(data);
-      if (result.error) { errEl.textContent = result.error; errEl.style.display = 'flex'; return; }
-      Toast.show(id ? 'Đã cập nhật khách hàng' : 'Đã thêm khách hàng', 'success');
-      closeModal(); applyFilters();
+
+      const data = {
+        fullName: document.getElementById('cName').value.trim(),
+        email: document.getElementById('cEmail').value.trim(),
+        phone: document.getElementById('cPhone').value.trim(),
+        address: document.getElementById('cAddress').value.trim(),
+        note: document.getElementById('cNote').value.trim(),
+        isActive: document.getElementById('cStatus').value !== 'locked'
+      };
+
+      const result = id
+        ? CustomerModule.update(id, data, getActorName())
+        : CustomerModule.create({ ...data, changedBy: getActorName() });
+
+      if (result.error) {
+        errEl.textContent = result.error;
+        errEl.style.display = 'flex';
+        return;
+      }
+
+      Toast.show(id ? 'Cập nhật thông tin khách hàng thành công' : 'Thêm khách hàng thành công', 'success');
+      closeModal();
+      applyFilters();
     }
 
     function deleteCustomer(id) {
-      const result = CustomerModule.delete(id);
-      if (result.warning) {
-        showConfirm(result.message + '\nVẫn muốn xóa?', () => { StorageService.softDelete('crb_users', id); Toast.show('Đã xóa khách hàng', 'success'); closePanel(); applyFilters(); });
+      if (!_isManager) {
+        Toast.show('Bạn không có quyền thực hiện chức năng này', 'error');
         return;
       }
-      showConfirm('Xóa khách hàng này?', () => { CustomerModule.delete(id); Toast.show('Đã xóa khách hàng', 'success'); closePanel(); applyFilters(); });
+
+      showConfirm('Bạn có chắc chắn muốn xóa/khóa khách hàng này không?', () => {
+        const result = CustomerModule.delete(id, getActorName());
+
+        if (result.warning || result.error) {
+          Toast.show(result.message || result.error, 'error');
+          return;
+        }
+
+        Toast.show('Đã xóa/khóa khách hàng thành công', 'success');
+        closePanel();
+        applyFilters();
+      });
+    }
+
+    function restoreCustomer(id) {
+      const result = CustomerModule.restore(id, getActorName());
+
+      if (result.error) {
+        Toast.show(result.error, 'error');
+        return;
+      }
+
+      Toast.show('Đã khôi phục khách hàng', 'success');
+      closePanel();
+      applyFilters();
+    }
+
+    function openPointConfig() {
+      const config = CustomerModule.getPointConfig();
+      document.getElementById('moneyPerPoint').value = config.moneyPerPoint || 10000;
+      document.getElementById('pointValue').value = config.pointValue || 1000;
+      document.getElementById('pointConfigModal').style.display = 'flex';
+    }
+
+    function closePointConfig() {
+      document.getElementById('pointConfigModal').style.display = 'none';
+    }
+
+    function savePointConfig() {
+      const moneyPerPoint = Number(document.getElementById('moneyPerPoint').value);
+      const pointValue = Number(document.getElementById('pointValue').value);
+
+      if (!moneyPerPoint || moneyPerPoint <= 0 || !pointValue || pointValue <= 0) {
+        Toast.show('Cấu hình điểm không hợp lệ', 'error');
+        return;
+      }
+
+      CustomerModule.savePointConfig({ moneyPerPoint, pointValue }, getActorName());
+      Toast.show('Đã lưu cấu hình tích điểm', 'success');
+      closePointConfig();
+    }
+
+    function addPointManual(id) {
+      const amount = Number(prompt('Nhập giá trị đơn thuê đã hoàn thành:'));
+
+      if (!amount || amount <= 0) {
+        Toast.show('Giá trị đơn thuê không hợp lệ', 'error');
+        return;
+      }
+
+      const result = CustomerModule.addPoints(id, amount);
+
+      if (result.error) {
+        Toast.show(result.error, 'error');
+        return;
+      }
+
+      Toast.show(`Khách hàng đã được cộng ${result.points} điểm thưởng`, 'success');
+      closePanel();
+      applyFilters();
+    }
+
+    function openUsePointModal(id) {
+      document.getElementById('pointCustomerId').value = id;
+      document.getElementById('usePointAmount').value = '';
+      document.getElementById('pointError').style.display = 'none';
+      document.getElementById('usePointModal').style.display = 'flex';
+    }
+
+    function closeUsePointModal() {
+      document.getElementById('usePointModal').style.display = 'none';
+    }
+
+    function confirmUsePoints() {
+      const id = document.getElementById('pointCustomerId').value;
+      const points = Number(document.getElementById('usePointAmount').value);
+      const errEl = document.getElementById('pointError');
+
+      if (!points || points <= 0) {
+        errEl.textContent = 'Số điểm sử dụng không hợp lệ';
+        errEl.style.display = 'flex';
+        return;
+      }
+
+      const result = CustomerModule.usePoints(id, points);
+
+      if (result.error) {
+        errEl.textContent = result.error;
+        errEl.style.display = 'flex';
+        return;
+      }
+
+      Toast.show(`Đã sử dụng điểm. Số tiền giảm: ${formatCurrency(result.discount)}`, 'success');
+      closeUsePointModal();
+      closePanel();
+      applyFilters();
     }
 
     applyFilters();
   </script>
 </body>
 </html>
-
-
