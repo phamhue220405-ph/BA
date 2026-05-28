@@ -37,9 +37,30 @@ const PromotionModule = {
   },
 
   // Posts
-  getAllPosts(onlyPublished = false) {
+  getAllPosts(filters = {}) {
     let posts = StorageService.getAll('crb_posts').filter(p => !p.deleted);
-    if (onlyPublished) posts = posts.filter(p => p.isPublished);
+    if (filters.onlyPublished) posts = posts.filter(p => p.isPublished);
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      posts = posts.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.content.toLowerCase().includes(q) ||
+        (Array.isArray(p.tags) ? p.tags.join(' ').toLowerCase().includes(q) : false)
+      );
+    }
+    if (filters.startDate) {
+      const start = new Date(filters.startDate);
+      if (!isNaN(start)) {
+        posts = posts.filter(p => new Date(p.createdAt) >= start);
+      }
+    }
+    if (filters.endDate) {
+      const end = new Date(filters.endDate);
+      if (!isNaN(end)) {
+        end.setHours(23, 59, 59, 999);
+        posts = posts.filter(p => new Date(p.createdAt) <= end);
+      }
+    }
     return posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   },
 

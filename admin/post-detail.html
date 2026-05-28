@@ -240,9 +240,8 @@
       showConfirm('Cập nhật bài viết này?', () => {
         const result = PromotionModule.updatePost(postId, data);
         if (result.error) { errEl.textContent = result.error; errEl.style.display = 'flex'; return; }
-        Toast.show('Đã cập nhật bài viết', 'success');
         closeEditModal();
-        renderDetail();
+        window.location.href = 'posts.html?updated=1';
       });
     }
 

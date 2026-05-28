@@ -12,9 +12,16 @@
   <div class="admin-layout">
     <div id="sidebarContainer"></div>
     <main class="admin-main">
-      <div class="admin-topbar">
+      <div class="admin-topbar" style="height:auto;min-height:64px;padding:16px 28px;">
         <div class="topbar-title">📰 Quản lý bài viết</div>
-        <div class="topbar-actions">
+        <div class="topbar-actions" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;width:100%">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;min-width:280px;">
+            <div class="table-search" style="flex:1;min-width:220px;max-width:320px;">
+              <input type="text" id="postsSearchInput" class="form-control" placeholder="Tìm kiếm bài viết..." oninput="applyPostFilters()">
+            </div>
+            <input type="date" id="postStartDateInput" class="form-control" style="max-width:160px;min-width:140px;" onchange="applyPostFilters()" title="Từ ngày đăng">
+            <input type="date" id="postEndDateInput" class="form-control" style="max-width:160px;min-width:140px;" onchange="applyPostFilters()" title="Đến ngày đăng">
+          </div>
           <button class="topbar-btn topbar-btn-primary" onclick="openModal()">+ Tạo bài viết</button>
         </div>
       </div>
@@ -95,11 +102,14 @@
 
     let currentPostPage = 1;
     const postsPerPage = 12;
+    let postSearchQuery = '';
+    let postStartDateFilter = '';
+    let postEndDateFilter = '';
 
     // ── Render grid ───────────────────────────────────────────────────
 
     function renderPosts() {
-      const allPosts = PromotionModule.getAllPosts();
+      const allPosts = PromotionModule.getAllPosts({ search: postSearchQuery, startDate: postStartDateFilter, endDate: postEndDateFilter });
       const grid = document.getElementById('postsGrid');
 
       if (!allPosts.length) {
@@ -157,6 +167,14 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    function applyPostFilters() {
+      postSearchQuery = document.getElementById('postsSearchInput').value.trim();
+      postStartDateFilter = document.getElementById('postStartDateInput').value;
+      postEndDateFilter = document.getElementById('postEndDateInput').value;
+      currentPostPage = 1;
+      renderPosts();
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────
 
     function categoryName(categoryId) {
@@ -207,13 +225,22 @@
     }
 
     function validatePostData(data) {
-      if (!data.title) return 'Vui lòng điền tiêu đề';
+      // Kiểm tra các trường bắt buộc
+      if (!data.title || !data.title.trim()) return 'Vui lòng nhập đầy đủ thông tin';
+      if (!data.content || !data.content.replace(/<[^>]+>/g, '').trim()) return 'Vui lòng nhập đầy đủ thông tin';
+      if (!data.categoryId) return 'Vui lòng nhập đầy đủ thông tin';
+      
+      // Kiểm tra độ dài tiêu đề
       if (data.title.length > 120) return 'Tiêu đề không được vượt quá 120 ký tự';
-      if (!data.content || data.content.replace(/<[^>]+>/g, '').trim().length < 150)
-        return 'Nội dung phải tối thiểu 150 ký tự';
-      if (!data.categoryId) return 'Vui lòng chọn danh mục';
+      
+      // Kiểm tra độ dài nội dung
+      const plainContent = data.content.replace(/<[^>]+>/g, '').trim();
+      if (plainContent.length < 150) return 'Nội dung phải tối thiểu 150 ký tự';
+      
+      // Kiểm tra URL ảnh
       const invalidUrl = (data.images || []).find(src => src && src.startsWith('http') && !isValidImageUrl(src));
       if (invalidUrl) return 'URL ảnh phải có định dạng jpg, jpeg hoặc png';
+      
       return null;
     }
 
@@ -303,7 +330,9 @@
         }
         Toast.show(id ? 'Đã cập nhật bài viết' : 'Đã đăng bài viết', 'success');
         closeModal();
+        currentPostPage = 1;
         renderPosts();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       });
     }
 
@@ -315,9 +344,20 @@
       });
     }
 
+    function showUpdatedPostToast() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('updated') === '1') {
+        Toast.show('Đã cập nhật bài viết', 'success');
+        params.delete('updated');
+        const newSearch = params.toString();
+        window.history.replaceState({}, '', window.location.pathname + (newSearch ? `?${newSearch}` : ''));
+      }
+    }
+
     // ── Init ──────────────────────────────────────────────────────────
     renderCategoryOptions();
     renderPosts();
+    showUpdatedPostToast();
   </script>
 </body>
 </html>

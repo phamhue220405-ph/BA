@@ -190,8 +190,19 @@
       document.getElementById('panelBody').innerHTML = `
         <div class="detail-row"><span class="detail-label">Tên phương thức</span><span class="detail-value">${m.name}</span></div>
         <div class="detail-row"><span class="detail-label">Thời gian giao ước tính</span><span class="detail-value">${m.deliveryTime || '—'}</span></div>
-        <div class="detail-row"><span class="detail-label">Trạng thái</span><span class="detail-value"><span class="status-badge status-${m.status==='active'?'da_xac_nhan':'cho_xac_nhan'}">${m.status==='active'?'Đang sử dụng':'Tạm ngừng'}</span></span></div>
-        <div class="detail-row"><span class="detail-label">Khu vực</span><span class="detail-value">${(m.regions||[]).join(', ')||'—'}</span></div>
+        <div class="detail-row">
+          <span class="detail-label">Trạng thái</span>
+          <span class="detail-value">
+            ${_canEdit
+              ? `<select id="panelStatusSelect" class="form-control" style="width:auto;font-size:13px;padding:4px 10px">
+                  <option value="active"${m.status==='active'?' selected':''}>Đang sử dụng</option>
+                  <option value="tam_ngung"${m.status==='tam_ngung'?' selected':''}>Tạm ngừng</option>
+                </select>`
+              : `<span class="status-badge status-${m.status==='active'?'da_xac_nhan':'cho_xac_nhan'}">${m.status==='active'?'Đang sử dụng':'Tạm ngừng'}</span>`
+            }
+          </span>
+        </div>
+        <div class="detail-row"><span class="detail-label">Khu vực</span><span class="detail-value" style="max-width:70%;word-break:break-word;text-align:right">${(m.regions||[]).join(', ')||'—'}</span></div>
         <div class="detail-row"><span class="detail-label">Mô tả</span><span class="detail-value">${m.description||'—'}</span></div>
         <div class="detail-row"><span class="detail-label">Ngày tạo</span><span class="detail-value">${formatDate(m.createdAt)}</span></div>
         <hr style="margin:16px 0">
@@ -215,8 +226,8 @@
       const footer = document.getElementById('panelFooter');
       if (_canEdit) {
         footer.innerHTML = `
-          <button class="btn btn-secondary btn-sm" onclick="toggleStatus('${m.id}','${m.status}')">${m.status==='active'?'Tạm ngừng':'Kích hoạt'}</button>
           <button class="btn btn-danger btn-sm" onclick="deleteMethod('${m.id}')">Xóa</button>
+          <button class="btn btn-secondary btn-sm" onclick="saveStatus('${m.id}')">Lưu trạng thái</button>
           <button class="btn btn-primary btn-sm" onclick="openEdit('${m.id}')" style="background:var(--admin-primary)">Chỉnh sửa</button>`;
       } else {
         footer.innerHTML = '<span style="font-size:13px;color:var(--gray-400)">Bạn chỉ có quyền xem</span>';
@@ -434,14 +445,20 @@
       });
     }
 
-    function toggleStatus(id, currentStatus) {
-      const action = currentStatus === 'active' ? 'suspend' : 'activate';
-      const label  = action === 'suspend' ? 'Tạm ngừng' : 'Kích hoạt';
-      showConfirm(label + ' phương thức vận chuyển này?', () => {
-        action === 'suspend' ? ShippingModule.suspend(id) : ShippingModule.activate(id);
+    function saveStatus(id) {
+      const sel = document.getElementById('panelStatusSelect');
+      if (!sel) return;
+      const newStatus = sel.value;
+      const m = ShippingModule.getById(id);
+      if (!m || m.status === newStatus) {
+        showSuccess('Trạng thái không thay đổi.');
+        return;
+      }
+      showConfirm('Cập nhật trạng thái phương thức vận chuyển?', () => {
+        newStatus === 'tam_ngung' ? ShippingModule.suspend(id) : ShippingModule.activate(id);
         closePanel();
         renderTable();
-        showSuccess(label + ' phương thức vận chuyển thành công!');
+        showSuccess('Cập nhật trạng thái thành công!');
       });
     }
 

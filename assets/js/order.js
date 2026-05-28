@@ -1,7 +1,7 @@
 // Order Module
 const OrderModule = {
   // ===== RENTAL ORDERS =====
-  createRentalOrder(userId, cartItems, deliveryInfo, shippingMethodId, shippingCost) {
+  createRentalOrder(userId, cartItems, deliveryInfo, shippingMethodId, shippingCost, orderSource, paymentStatus = 'pending') {
     const subtotal = cartItems.reduce((s, i) => s + i.subtotal, 0);
     const depositTotal = cartItems.reduce((s, i) => s + i.depositAmount, 0);
     const agreedReturnDate = cartItems.reduce((latest, i) => {
@@ -17,6 +17,7 @@ const OrderModule = {
       deliveryInfo,
       shippingMethodId: shippingMethodId || null,
       shippingCost: shippingCost || 0,
+      orderSource: orderSource || null,
       subtotal,
       depositTotal,
       discountAmount: 0,
@@ -24,7 +25,7 @@ const OrderModule = {
       loyaltyPointsUsed: 0,
       totalAmount: subtotal + depositTotal + (shippingCost || 0),
       paymentMethod: null,
-      paymentStatus: 'pending',
+      paymentStatus: paymentStatus || 'pending',
       depositStatus: 'held',
       status: 'cho_xac_nhan',
       deliveryStatus: 'cho_xac_nhan',
@@ -71,6 +72,17 @@ const OrderModule = {
       const pts = Math.floor(order.totalAmount / config.rate);
       const user = StorageService.getById('crb_users', order.userId);
       if (user) StorageService.update('crb_users', order.userId, { loyaltyPoints: (user.loyaltyPoints || 0) + pts });
+    }
+    StorageService.update('crb_rental_orders', id, changes);
+    return { success: true };
+  },
+
+  updateRentalPaymentStatus(id, paymentStatus, staffId) {
+    const order = this.getRentalOrderById(id);
+    if (!order) return { error: 'Không tìm thấy đơn hàng' };
+    const changes = { paymentStatus };
+    if (paymentStatus === 'refunded') {
+      changes.depositStatus = order.depositStatus === 'held' ? 'refunded' : order.depositStatus;
     }
     StorageService.update('crb_rental_orders', id, changes);
     return { success: true };

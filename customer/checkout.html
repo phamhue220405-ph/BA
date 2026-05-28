@@ -78,8 +78,8 @@
               ${shippingMethods.length ? shippingMethods.map(m => `
                 <label style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--gray-200);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:8px;transition:border-color 0.2s" onclick="selectShipping('${m.id}',this)">
                   <input type="radio" name="shipping" value="${m.id}" style="display:none">
-                  <div style="flex:1"><div style="font-weight:600">${m.name}</div><div style="font-size:13px;color:var(--gray-500)">D? ki?n ${m.estimatedDays} ng�y</div></div>
-                  <div style="font-weight:700;color:var(--primary)">${m.costs[0] ? formatCurrency(m.costs[0].cost) : 'Mi?n ph�'}</div>
+                  <div style="flex:1"><div style="font-weight:600">${m.name}</div><div style="font-size:13px;color:var(--gray-500)">${m.deliveryTime ? 'Dự kiến ' + m.deliveryTime : ''}</div></div>
+                  <div style="font-weight:700;color:var(--primary)">${m.costs && m.costs[0] ? formatCurrency(m.costs[0].cost) : 'Miễn phí'}</div>
                 </label>`).join('') : '<p style="color:var(--gray-400)">Kh�ng c� phuong th?c v?n chuy?n</p>'}
             </div>
 
@@ -207,7 +207,11 @@
       // Save bank account
       const bankName = document.getElementById('bankName').value.trim();
       const bankAccount = document.getElementById('bankAccount').value.trim();
-      if (bankName && bankAccount) PaymentModule.registerBankAccount(session.userId, { bankName, accountNumber: bankAccount });
+      if (bankName && bankAccount) {
+        StorageService.update('crb_users', session.userId, {
+          bankAccount: { bankName, accountNumber: bankAccount }
+        });
+      }
 
       const orderResult = OrderModule.createRentalOrder(session.userId, items, deliveryInfo, selectedShipping, shippingCost);
       if (orderResult.error) { errEl.textContent = orderResult.error; errEl.style.display = 'flex'; return; }

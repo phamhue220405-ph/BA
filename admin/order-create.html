@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tạo đơn thuê - LuxRent Admin</title>
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="../assets/css/components.css">
+  <style>
+    .section-card { background:#fff; border-radius:var(--radius); border:1px solid var(--gray-200); padding:20px; margin-bottom:20px; box-shadow:var(--shadow-sm); }
+    .section-card h3 { font-size:15px; font-weight:700; color:var(--gray-800); margin:0 0 16px; padding-bottom:12px; border-bottom:1px solid var(--gray-100); }
+    .product-row { display:flex; gap:12px; align-items:flex-start; padding:14px; border:1px solid var(--gray-200); border-radius:var(--radius-sm); margin-bottom:10px; background:var(--gray-50); }
+    .product-row-img { width:56px; height:72px; object-fit:cover; border-radius:6px; flex-shrink:0; }
+    .product-row-info { flex:1; min-width:0; }
+    .product-row-info .name { font-weight:600; font-size:14px; margin-bottom:4px; }
+    .product-row-inputs { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; margin-top:8px; }
+    .product-row-price { text-align:right; font-weight:700; color:var(--admin-primary); font-size:14px; white-space:nowrap; }
+    .remove-btn { background:none; border:none; color:var(--gray-400); cursor:pointer; font-size:18px; padding:0 4px; flex-shrink:0; }
+    .remove-btn:hover { color:var(--error); }
+    .summary-row { display:flex; justify-content:space-between; padding:8px 0; font-size:14px; border-bottom:1px solid var(--gray-100); }
+    .summary-row:last-child { border-bottom:none; }
+    .summary-row.total { font-weight:700; font-size:16px; color:var(--admin-primary); }
+
+    /* Product picker modal */
+    .picker-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px; max-height:400px; overflow-y:auto; padding:4px; }
+    .picker-card { border:2px solid var(--gray-200); border-radius:var(--radius-sm); padding:10px; cursor:pointer; transition:border-color 0.2s; }
+    .picker-card:hover { border-color:var(--admin-primary); }
+    .picker-card img { width:100%; height:100px; object-fit:cover; border-radius:4px; margin-bottom:8px; }
+    .picker-card .pname { font-size:13px; font-weight:600; margin-bottom:4px; }
+    .picker-card .pprice { font-size:12px; color:var(--admin-primary); font-weight:600; }
+  </style>
+</head>
+<body class="admin-body">
+  <div class="admin-layout">
+    <div id="sidebarContainer"></div>
+    <main class="admin-main">
+      <div class="admin-topbar">
+        <div class="topbar-title">📦 Tạo đơn thuê mới</div>
+        <div class="topbar-actions">
+          <a href="/admin/orders.html" class="topbar-btn" style="background:var(--gray-100);color:var(--gray-700)">← Quay lại</a>
+        </div>
+      </div>
+      <div class="admin-content">
+        <div style="display:grid;grid-template-columns:1fr 340px;gap:24px;align-items:start">
+
+          <!-- LEFT -->
+          <div>
+            <!-- Sản phẩm -->
+            <div class="section-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--gray-100)">
+                <h3 style="margin:0;border:none;padding:0">🛍 Sản phẩm thuê</h3>
+                <button class="btn btn-primary btn-sm" onclick="openProductPicker()" style="background:var(--admin-primary)">+ Thêm sản phẩm</button>
+              </div>
+              <div id="productList">
+                <div style="text-align:center;padding:32px;color:var(--gray-400);border:2px dashed var(--gray-200);border-radius:var(--radius-sm)">
+                  Chưa có sản phẩm — bấm "+ Thêm sản phẩm" để chọn
+                </div>
+              </div>
+            </div>
+
+            <!-- Thông tin giao hàng -->
+            <div class="section-card">
+              <h3>📍 Thông tin giao hàng</h3>
+              <div class="form-row">
+                <div class="form-group"><label>Tên khách hàng *</label><input type="text" id="custName" class="form-control" placeholder="Nguyễn Văn A"></div>
+                <div class="form-group"><label>Số điện thoại *</label><input type="tel" id="custPhone" class="form-control" placeholder="0901234567"></div>
+              </div>
+              <div class="form-group"><label>Địa chỉ giao hàng *</label><input type="text" id="custAddress" class="form-control" placeholder="Số nhà, đường, phường, quận, tỉnh/thành"></div>
+              <div class="form-row">
+                <div class="form-group"><label>Ngày giao hàng mong muốn</label><input type="date" id="deliveryDate" class="form-control"></div>
+                <div class="form-group"><label>Phương thức vận chuyển</label>
+                  <select id="shippingMethod" class="form-control" onchange="onShippingChange()">
+                    <option value="">-- Không chọn --</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Thông tin đơn -->
+            <div class="section-card">
+              <h3>📋 Thông tin đơn</h3>
+              <div class="form-row">
+                <div class="form-group"><label>Nguồn đơn</label>
+                  <select id="orderSource" class="form-control">
+                    <option value="">-- Chọn nguồn --</option>
+                    <option value="pos">POS (Quầy)</option>
+                    <option value="website">Website</option>
+                    <option value="phone">Điện thoại</option>
+                  </select>
+                </div>
+                <div class="form-group"><label>Ngày đặt hàng *</label><input type="date" id="orderDate" class="form-control"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>Trạng thái thanh toán</label>
+                  <select id="paymentStatus" class="form-control">
+                    <option value="pending">Chờ thanh toán</option>
+                    <option value="paid">Đã thanh toán</option>
+                    <option value="refunded">Đã hoàn tiền</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group"><label>Ghi chú</label><textarea id="orderNote" class="form-control" rows="3" placeholder="Ghi chú nội bộ..."></textarea></div>
+            </div>
+          </div>
+
+          <!-- RIGHT: Summary -->
+          <div style="position:sticky;top:80px">
+            <div class="section-card">
+              <h3>💰 Tóm tắt đơn hàng</h3>
+              <div id="summaryItems" style="margin-bottom:12px;font-size:13px;color:var(--gray-500)">Chưa có sản phẩm</div>
+              <div class="summary-row"><span>Tiền thuê</span><span id="sumRental">0 đ</span></div>
+              <div class="summary-row"><span>Tiền cọc</span><span id="sumDeposit">0 đ</span></div>
+              <div class="summary-row" id="sumShippingRow" style="display:none"><span>Phí vận chuyển</span><span id="sumShipping">0 đ</span></div>
+              <div class="summary-row total"><span>Tổng cộng</span><span id="sumTotal">0 đ</span></div>
+            </div>
+
+            <div id="createError" class="alert alert-error" style="display:none;margin-bottom:12px"></div>
+            <button class="btn btn-primary btn-full" onclick="submitOrder()" style="background:var(--admin-primary);padding:14px;font-size:15px;font-weight:700">
+              ✅ Tạo đơn thuê
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Product Picker Modal -->
+  <div id="pickerModal" class="modal-overlay" style="display:none">
+    <div class="modal" style="max-width:680px">
+      <div class="modal-header">
+        <div class="modal-title">Chọn sản phẩm</div>
+        <button class="modal-close" onclick="closeProductPicker()">✕</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <input type="text" id="pickerSearch" class="form-control" placeholder="Tìm tên sản phẩm..." oninput="renderPickerGrid()" style="flex:1">
+        <select id="pickerCategory" class="form-control" style="width:160px" onchange="renderPickerGrid()">
+          <option value="">Tất cả danh mục</option>
+        </select>
+      </div>
+      <div class="picker-grid" id="pickerGrid"></div>
+    </div>
+  </div>
+
+  <!-- Size/Date Modal -->
+  <div id="detailModal" class="modal-overlay" style="display:none">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-header">
+        <div class="modal-title" id="detailModalTitle">Chọn thông tin thuê</div>
+        <button class="modal-close" onclick="closeDetailModal()">✕</button>
+      </div>
+      <input type="hidden" id="detailProductId">
+      <div class="form-row">
+        <div class="form-group"><label>Size *</label>
+          <select id="detailSize" class="form-control"></select>
+        </div>
+        <div class="form-group"><label>Màu sắc *</label>
+          <select id="detailColor" class="form-control"></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Ngày bắt đầu thuê *</label><input type="date" id="detailStart" class="form-control"></div>
+        <div class="form-group"><label>Ngày kết thúc thuê *</label><input type="date" id="detailEnd" class="form-control"></div>
+      </div>
+      <div id="detailPreview" style="background:var(--gray-50);border-radius:var(--radius-sm);padding:12px;font-size:13px;margin-top:4px"></div>
+      <div id="detailError" class="alert alert-error" style="display:none;margin-top:10px"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeDetailModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="confirmAddProduct()" style="background:var(--admin-primary)">Thêm vào đơn</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/storage.js"></script>
+  <script src="../assets/js/utils.js"></script>
+  <script src="../assets/js/auth.js"></script>
+  <script src="../assets/js/product.js"></script>
+  <script src="../assets/js/order.js"></script>
+  <script src="../assets/js/shipping.js"></script>
+  <script src="../assets/js/admin-common.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script>
+    const session = AuthModule.requireAdminAuth();
+    if (session) document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('orders', session);
+
+    // ── State ─────────────────────────────────────────────────────────
+    let orderItems = [];   // { productId, productName, productImage, size, color, rentalStartDate, rentalEndDate, rentalDays, pricePerDay, depositAmount, subtotal }
+    let shippingCost = 0;
+
+    // ── Init ──────────────────────────────────────────────────────────
+    document.getElementById('orderDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('deliveryDate').min = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
+    // Populate shipping methods
+    ShippingModule.getActive().forEach(m => {
+      const o = document.createElement('option');
+      o.value = m.id;
+      o.textContent = m.name + (m.deliveryTime ? ' (' + m.deliveryTime + ')' : '');
+      document.getElementById('shippingMethod').appendChild(o);
+    });
+
+    // Populate category filter in picker
+    ProductModule.getCategories().forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id; o.textContent = c.name;
+      document.getElementById('pickerCategory').appendChild(o);
+    });
+
+    // ── Product Picker ────────────────────────────────────────────────
+    function openProductPicker() {
+      document.getElementById('pickerSearch').value = '';
+      document.getElementById('pickerCategory').value = '';
+      renderPickerGrid();
+      document.getElementById('pickerModal').style.display = 'flex';
+    }
+
+    function closeProductPicker() {
+      document.getElementById('pickerModal').style.display = 'none';
+    }
+
+    function renderPickerGrid() {
+      const search = document.getElementById('pickerSearch').value.trim();
+      const catId  = document.getElementById('pickerCategory').value;
+      const products = ProductModule.getAll({ name: search || undefined, categoryId: catId || undefined });
+      const grid = document.getElementById('pickerGrid');
+      if (!products.length) {
+        grid.innerHTML = '<p style="color:var(--gray-400);grid-column:1/-1;text-align:center;padding:20px">Không tìm thấy sản phẩm</p>';
+        return;
+      }
+      grid.innerHTML = products.map(p => `
+        <div class="picker-card" onclick="selectProduct('${p.id}')">
+          <img src="${p.images && p.images[0] ? p.images[0] : 'https://via.placeholder.com/180x100?text=No+Image'}" alt="${p.name}">
+          <div class="pname">${p.name}</div>
+          <div class="pprice">${formatCurrency(p.rentalPricePerDay)}/ngày</div>
+          <div style="font-size:11px;color:var(--gray-400);margin-top:2px">Cọc: ${formatCurrency(p.depositAmount)}</div>
+        </div>`).join('');
+    }
+
+    function selectProduct(productId) {
+      closeProductPicker();
+      const p = ProductModule.getById(productId);
+      if (!p) return;
+      document.getElementById('detailProductId').value = productId;
+      document.getElementById('detailModalTitle').textContent = p.name;
+
+      // Size options
+      const sizeEl = document.getElementById('detailSize');
+      sizeEl.innerHTML = (p.sizes || []).map(s => `<option value="${s}">${s}</option>`).join('');
+
+      // Color options
+      const colorEl = document.getElementById('detailColor');
+      colorEl.innerHTML = (p.colors || []).map(c => `<option value="${c}">${c}</option>`).join('');
+
+      // Default dates
+      const today = new Date().toISOString().slice(0, 10);
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      document.getElementById('detailStart').value = today;
+      document.getElementById('detailEnd').value = tomorrow;
+      document.getElementById('detailError').style.display = 'none';
+      updateDetailPreview();
+      document.getElementById('detailModal').style.display = 'flex';
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detailModal').style.display = 'none';
+    }
+
+    function updateDetailPreview() {
+      const pid   = document.getElementById('detailProductId').value;
+      const start = document.getElementById('detailStart').value;
+      const end   = document.getElementById('detailEnd').value;
+      const p = ProductModule.getById(pid);
+      if (!p || !start || !end) { document.getElementById('detailPreview').innerHTML = ''; return; }
+      const days = Math.ceil((new Date(end) - new Date(start)) / 86400000);
+      if (days <= 0) { document.getElementById('detailPreview').innerHTML = '<span style="color:var(--error)">Ngày kết thúc phải sau ngày bắt đầu</span>'; return; }
+      const rental  = p.rentalPricePerDay * days;
+      const deposit = p.depositAmount;
+      document.getElementById('detailPreview').innerHTML =
+        `<strong>${days} ngày</strong> × ${formatCurrency(p.rentalPricePerDay)}/ngày = <strong style="color:var(--admin-primary)">${formatCurrency(rental)}</strong>`
+        + `<br>Tiền cọc: <strong>${formatCurrency(deposit)}</strong>`
+        + `<br>Tổng dòng: <strong>${formatCurrency(rental + deposit)}</strong>`;
+    }
+
+    document.getElementById('detailStart').addEventListener('change', updateDetailPreview);
+    document.getElementById('detailEnd').addEventListener('change', updateDetailPreview);
+
+    function confirmAddProduct() {
+      const errEl = document.getElementById('detailError');
+      const pid   = document.getElementById('detailProductId').value;
+      const size  = document.getElementById('detailSize').value;
+      const color = document.getElementById('detailColor').value;
+      const start = document.getElementById('detailStart').value;
+      const end   = document.getElementById('detailEnd').value;
+      const p = ProductModule.getById(pid);
+
+      if (!size || !color || !start || !end) { errEl.textContent = 'Vui lòng điền đầy đủ thông tin'; errEl.style.display = 'flex'; return; }
+      const days = Math.ceil((new Date(end) - new Date(start)) / 86400000);
+      if (days <= 0) { errEl.textContent = 'Ngày kết thúc phải sau ngày bắt đầu'; errEl.style.display = 'flex'; return; }
+
+      orderItems.push({
+        productId:      p.id,
+        productName:    p.name,
+        productImage:   p.images && p.images[0] ? p.images[0] : '',
+        size, color,
+        rentalStartDate: start,
+        rentalEndDate:   end,
+        rentalDays:      days,
+        pricePerDay:     p.rentalPricePerDay,
+        depositAmount:   p.depositAmount,
+        subtotal:        p.rentalPricePerDay * days,
+      });
+
+      closeDetailModal();
+      renderProductList();
+      updateSummary();
+    }
+
+    // ── Product List ──────────────────────────────────────────────────
+    function renderProductList() {
+      const el = document.getElementById('productList');
+      if (!orderItems.length) {
+        el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400);border:2px dashed var(--gray-200);border-radius:var(--radius-sm)">Chưa có sản phẩm — bấm "+ Thêm sản phẩm" để chọn</div>';
+        return;
+      }
+      el.innerHTML = orderItems.map((item, idx) => `
+        <div class="product-row">
+          <img class="product-row-img" src="${item.productImage || 'https://via.placeholder.com/56x72?text=SP'}" alt="${item.productName}">
+          <div class="product-row-info">
+            <div class="name">${item.productName}</div>
+            <div style="font-size:12px;color:var(--gray-500)">Size: ${item.size} | Màu: ${item.color}</div>
+            <div style="font-size:12px;color:var(--gray-500)">${formatDate(item.rentalStartDate)} → ${formatDate(item.rentalEndDate)} (${item.rentalDays} ngày)</div>
+            <div style="font-size:12px;margin-top:4px">
+              Thuê: <strong>${formatCurrency(item.subtotal)}</strong> &nbsp;|&nbsp; Cọc: <strong>${formatCurrency(item.depositAmount)}</strong>
+            </div>
+          </div>
+          <button class="remove-btn" onclick="removeItem(${idx})" title="Xóa">✕</button>
+        </div>`).join('');
+    }
+
+    function removeItem(idx) {
+      orderItems.splice(idx, 1);
+      renderProductList();
+      updateSummary();
+    }
+
+    // ── Summary ───────────────────────────────────────────────────────
+    function onShippingChange() {
+      const id = document.getElementById('shippingMethod').value;
+      if (!id) { shippingCost = 0; document.getElementById('sumShippingRow').style.display = 'none'; }
+      else {
+        const m = ShippingModule.getById(id);
+        shippingCost = m && m.costs && m.costs[0] ? m.costs[0].cost : 0;
+        document.getElementById('sumShippingRow').style.display = 'flex';
+        document.getElementById('sumShipping').textContent = formatCurrency(shippingCost);
+      }
+      updateSummary();
+    }
+
+    function updateSummary() {
+      const rental  = orderItems.reduce((s, i) => s + i.subtotal, 0);
+      const deposit = orderItems.reduce((s, i) => s + i.depositAmount, 0);
+      const total   = rental + deposit + shippingCost;
+      document.getElementById('sumRental').textContent  = formatCurrency(rental);
+      document.getElementById('sumDeposit').textContent = formatCurrency(deposit);
+      document.getElementById('sumTotal').textContent   = formatCurrency(total);
+
+      const summaryItems = document.getElementById('summaryItems');
+      if (!orderItems.length) { summaryItems.textContent = 'Chưa có sản phẩm'; return; }
+      summaryItems.innerHTML = orderItems.map(i =>
+        `<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>${i.productName} (${i.rentalDays}n)</span><span>${formatCurrency(i.subtotal)}</span></div>`
+      ).join('');
+    }
+
+    // ── Submit ────────────────────────────────────────────────────────
+    function submitOrder() {
+      const errEl = document.getElementById('createError');
+      errEl.style.display = 'none';
+
+      const name    = document.getElementById('custName').value.trim();
+      const phone   = document.getElementById('custPhone').value.trim();
+      const address = document.getElementById('custAddress').value.trim();
+      const orderDate = document.getElementById('orderDate').value;
+
+      if (!name || !phone || !address)  { errEl.textContent = 'Vui lòng điền đầy đủ thông tin khách hàng'; errEl.style.display = 'flex'; return; }
+      if (!orderDate)                   { errEl.textContent = 'Vui lòng chọn ngày đặt hàng'; errEl.style.display = 'flex'; return; }
+      if (!orderItems.length)           { errEl.textContent = 'Vui lòng thêm ít nhất một sản phẩm'; errEl.style.display = 'flex'; return; }
+
+      const shippingMethodId = document.getElementById('shippingMethod').value || null;
+      const orderSource      = document.getElementById('orderSource').value || null;
+      const paymentStatus    = document.getElementById('paymentStatus').value || 'pending';
+      const note             = document.getElementById('orderNote').value.trim();
+
+      const deliveryInfo = {
+        recipientName: name,
+        phone,
+        address,
+        preferredDeliveryDate: document.getElementById('deliveryDate').value,
+        orderDate,
+        note,
+      };
+
+      showConfirm('Tạo đơn thuê mới?', () => {
+        const result = OrderModule.createRentalOrder(
+          'staff_' + session.userId,
+          orderItems,
+          deliveryInfo,
+          shippingMethodId,
+          shippingCost,
+          orderSource,
+          paymentStatus
+        );
+        if (result.error) { errEl.textContent = result.error; errEl.style.display = 'flex'; return; }
+        showSuccess('Tạo đơn thuê thành công!', () => {
+          window.location.href = '/admin/order-detail.html?id=' + result.order.id;
+        });
+      });
+    }
+  </script>
+</body>
+</html>

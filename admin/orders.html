@@ -36,7 +36,7 @@
           </div>
           <div style="overflow-x:auto">
             <table class="admin-table">
-              <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Tổng tiền</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
+              <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Sản phẩm</th><th>Tổng tiền</th><th>Thu phí COD</th><th>Trạng thái thanh toán</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
               <tbody id="ordersTable"></tbody>
             </table>
           </div>
@@ -47,13 +47,38 @@
   </div>
 
   <div id="createModal" class="modal-overlay" style="display:none">
-    <div class="modal" style="max-width:600px">
-      <div class="modal-header"><div class="modal-title">Tạo đơn thuê mới</div><button class="modal-close" onclick="closeCreateModal()">✕</button></div>
-      <div class="form-group"><label>Tên khách hàng *</label><input type="text" id="newCustName" class="form-control"></div>
-      <div class="form-row">
-        <div class="form-group"><label>Số điện thoại *</label><input type="text" id="newCustPhone" class="form-control"></div>
-        <div class="form-group"><label>Địa chỉ giao hàng *</label><input type="text" id="newAddress" class="form-control"></div>
+    <div class="modal" style="max-width:900px">
+      <div class="modal-header"><div class="modal-title">Tạo đơn hàng mới</div><button class="modal-close" onclick="closeCreateModal()">✕</button></div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;padding:16px 0;">
+        <div style="background:var(--white);border-radius:var(--radius-md);padding:16px;box-shadow:0 0 0 1px rgba(15,23,42,.06)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div><strong style="font-size:16px">Sản phẩm</strong><div style="font-size:13px;color:var(--gray-500)">Thêm sản phẩm vào đơn</div></div>
+            <button class="btn btn-secondary btn-sm" onclick="addOrderProduct()" type="button">Thêm sản phẩm</button>
+          </div>
+          <div id="newOrderProducts" style="min-height:220px;border:1px dashed var(--gray-300);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--gray-400);">
+            Chưa có sản phẩm nào
+          </div>
+        </div>
+        <div style="display:grid;gap:16px">
+          <div style="background:var(--white);border-radius:var(--radius-md);padding:16px;box-shadow:0 0 0 1px rgba(15,23,42,.06)">
+            <div style="font-weight:600;margin-bottom:12px">Thông tin đơn hàng</div>
+            <div class="form-group"><label>Ngày đặt hàng *</label><input type="date" id="newOrderDate" class="form-control"></div>
+            <div class="form-group"><label>Phương thức vận chuyển</label><select id="newShippingMethod" class="form-control"><option value="">-- Chọn phương thức --</option></select></div>
+            <div class="form-group"><label>Nguồn đơn</label><select id="newOrderSource" class="form-control"><option value="">Chọn nguồn đơn</option><option value="online">Online</option><option value="walk_in">Quầy</option><option value="phone">Điện thoại</option></select></div>
+          </div>
+          <div style="background:var(--white);border-radius:var(--radius-md);padding:16px;box-shadow:0 0 0 1px rgba(15,23,42,.06)">
+            <div style="font-weight:600;margin-bottom:12px">Khách hàng</div>
+            <div class="form-group"><label>Tên khách hàng *</label><input type="text" id="newCustName" class="form-control"></div>
+            <div class="form-group"><label>Số điện thoại *</label><input type="text" id="newCustPhone" class="form-control"></div>
+            <div class="form-group"><label>Địa chỉ giao hàng *</label><input type="text" id="newAddress" class="form-control"></div>
+          </div>
+          <div style="background:var(--white);border-radius:var(--radius-md);padding:16px;box-shadow:0 0 0 1px rgba(15,23,42,.06)">
+            <div style="font-weight:600;margin-bottom:12px">Ghi chú</div>
+            <textarea id="newOrderNote" class="form-control" rows="4" placeholder="VD: Nhận hàng ghi công nợ"></textarea>
+          </div>
+        </div>
       </div>
+      <div id="createOrderError" class="alert alert-error" style="display:none;margin:0 16px 16px"></div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeCreateModal()">Hủy</button>
         <button class="btn btn-primary" onclick="createManualOrder()" style="background:var(--admin-primary)">Tạo đơn</button>
@@ -65,6 +90,7 @@
   <script src="../assets/js/utils.js"></script>
   <script src="../assets/js/auth.js"></script>
   <script src="../assets/js/order.js"></script>
+  <script src="../assets/js/shipping.js"></script>
   <script src="../assets/js/admin-common.js"></script>
   <script src="../assets/js/seed.js"></script>
   <script>
@@ -73,8 +99,17 @@
       document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('orders', session);
       const _canEdit = canEdit('orders', session.role);
       if (_canEdit) {
-        document.getElementById('topbarActions').innerHTML = `<button class="topbar-btn topbar-btn-primary" onclick="openCreateModal()">+ Tạo đơn mới</button>`;
+        document.getElementById('topbarActions').innerHTML = `<a href="/admin/order-create.html" class="topbar-btn topbar-btn-primary">+ Tạo đơn mới</a>`;
       }
+
+      const allMethods = ShippingModule.getAll();
+      const shippingMethodSelect = document.getElementById('newShippingMethod');
+      allMethods.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.name;
+        shippingMethodSelect.appendChild(opt);
+      });
 
       let currentPage = 1, allOrders = [];
 
@@ -90,7 +125,7 @@
         const paged = paginate(allOrders, currentPage);
         const tbody = document.getElementById('ordersTable');
         if (!paged.items.length) {
-          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--gray-400)">Không có đơn hàng nào</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--gray-400)">Không có đơn hàng nào</td></tr>';
         } else {
           tbody.innerHTML = paged.items.map(o => `
             <tr>
@@ -98,6 +133,8 @@
               <td><div style="font-weight:500">${o.customerName}</div><div style="font-size:12px;color:var(--gray-400)">${o.deliveryInfo?.phone || ''}</div></td>
               <td>${(o.items||[]).length} sản phẩm</td>
               <td style="font-weight:600">${formatCurrency(o.totalAmount)}</td>
+              <td style="font-weight:600">${formatCurrency(o.codFee || 0)}</td>
+              <td><span class="status-badge status-${o.paymentStatus || 'pending'}">${STATUS_LABELS[o.paymentStatus || 'pending'] || o.paymentStatus || 'Chưa thanh toán'}</span></td>
               <td><span class="status-badge status-${o.status}">${STATUS_LABELS[o.status]||o.status}</span></td>
               <td>${formatDate(o.createdAt)}</td>
               <td class="table-actions-cell">
@@ -128,15 +165,48 @@
         });
       };
 
-      window.openCreateModal = () => document.getElementById('createModal').style.display = 'flex';
+      window.addOrderProduct = () => {
+        Toast.show('Thêm sản phẩm sau khi tạo đơn trong trang chi tiết đơn hàng', 'info');
+      };
+
+      window.openCreateModal = () => {
+        document.getElementById('newCustName').value = '';
+        document.getElementById('newCustPhone').value = '';
+        document.getElementById('newAddress').value = '';
+        document.getElementById('newOrderNote').value = '';
+        document.getElementById('newOrderSource').value = '';
+        document.getElementById('newShippingMethod').value = '';
+        document.getElementById('newOrderDate').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('newOrderProducts').textContent = 'Chưa có sản phẩm nào';
+        document.getElementById('createOrderError').style.display = 'none';
+        document.getElementById('createModal').style.display = 'flex';
+      };
       window.closeCreateModal = () => document.getElementById('createModal').style.display = 'none';
 
       window.createManualOrder = () => {
         const name = document.getElementById('newCustName').value.trim();
         const phone = document.getElementById('newCustPhone').value.trim();
         const address = document.getElementById('newAddress').value.trim();
-        if (!name || !phone || !address) { Toast.show('Vui lòng điền đầy đủ thông tin', 'warning'); return; }
-        const result = OrderModule.createRentalOrder('walk_in_' + Date.now(), [], { recipientName: name, phone, address, preferredDeliveryDate: '' }, null, 0);
+        const orderDate = document.getElementById('newOrderDate').value;
+        const shippingMethodId = document.getElementById('newShippingMethod').value;
+        const orderNote = document.getElementById('newOrderNote').value.trim();
+        const orderSource = document.getElementById('newOrderSource').value;
+        const errorEl = document.getElementById('createOrderError');
+
+        if (!name || !phone || !address || !orderDate) {
+          errorEl.textContent = 'Vui lòng điền đầy đủ tên, điện thoại, địa chỉ và ngày đặt hàng';
+          errorEl.style.display = 'flex';
+          return;
+        }
+
+        const result = OrderModule.createRentalOrder(
+          'walk_in_' + Date.now(),
+          [],
+          { recipientName: name, phone, address, preferredDeliveryDate: '', orderDate, note: orderNote },
+          shippingMethodId || null,
+          0,
+          orderSource || null
+        );
         closeCreateModal();
         Toast.show('Đã tạo đơn hàng', 'success');
         window.location.href = '/admin/order-detail.html?id=' + result.order.id;

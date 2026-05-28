@@ -14,8 +14,7 @@
     <main class="admin-main">
       <div class="admin-topbar">
         <div class="topbar-title">💰 Chi phí vận chuyển</div>
-        <div class="topbar-actions">
-          <button class="topbar-btn topbar-btn-primary" onclick="openModal()">+ Thiết lập chi phí</button>
+        <div class="topbar-actions" id="topbarActions">
         </div>
       </div>
       <div class="admin-content">
@@ -82,10 +81,23 @@
       </div>
       <div class="form-group">
         <label>Khu vực *</label>
-        <select id="costRegion" class="form-control">
-          <option value="">-- Chọn khu vực --</option>
-        </select>
-        <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Khu vực được lấy từ phương thức vận chuyển đã chọn</div>
+        <div id="costRegionPickerWrap" style="position:relative">
+          <div id="costRegionTrigger" onclick="toggleCostRegionPicker()"
+            style="border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#fff;min-height:38px;gap:8px">
+            <span id="costRegionTriggerLabel" style="color:var(--gray-400);font-size:13px;flex:1">-- Chọn khu vực --</span>
+            <span style="font-size:10px;color:var(--gray-400);flex-shrink:0">▾</span>
+          </div>
+          <div id="costRegionPickerMenu"
+            style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);box-shadow:0 4px 16px rgba(0,0,0,0.1);z-index:400;max-height:320px;overflow-y:auto">
+            <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;border-bottom:2px solid var(--gray-200);font-weight:600;background:var(--gray-50)">
+              <input type="checkbox" id="costRegionAll" onchange="onCostRegionAllChange()">
+              <span>🌐 Tất cả</span>
+            </label>
+            <div id="costRegionGroups"></div>
+          </div>
+        </div>
+        <input type="hidden" id="costRegions">
+        <div style="font-size:12px;color:var(--gray-400);margin-top:4px">Chọn Tất cả hoặc chọn 1 hoặc nhiều khu vực giống khu vực áp dụng phương thức vận chuyển.</div>
       </div>
       <div class="form-group">
         <label>Chi phí (đ) *</label>
@@ -99,7 +111,25 @@
       <div id="modalError" class="alert alert-error" style="display:none"></div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
-        <button class="btn btn-primary" onclick="saveCost()" style="background:var(--admin-primary)">Lưu</button>
+        <button id="costSaveBtn" class="btn btn-primary" onclick="saveCost()" style="background:var(--admin-primary)">Lưu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="costDetailModal" class="modal-overlay" style="display:none">
+    <div class="modal" style="max-width:500px">
+      <div class="modal-header">
+        <div class="modal-title">Chi tiết chi phí vận chuyển</div>
+        <button class="modal-close" onclick="closeDetailModal()">✕</button>
+      </div>
+      <div class="form-group"><label>Phương thức</label><div id="costDetailMethod" style="font-weight:600"></div></div>
+      <div class="form-group"><label>Khu vực</label><div id="costDetailRegion" style="font-weight:600"></div></div>
+      <div class="form-group"><label>Chi phí</label><div id="costDetailAmount" style="font-weight:600;color:var(--admin-primary)"></div></div>
+      <div class="form-group"><label>Thời gian giao</label><div id="costDetailDays" style="font-weight:600"></div></div>
+      <div class="form-group"><label>Cập nhật</label><div id="costDetailUpdated" style="font-weight:600;color:var(--gray-600)"></div></div>
+      <div class="modal-footer" style="justify-content:flex-start">
+        <button id="costDetailEditBtn" class="btn btn-primary">Sửa</button>
+        <button id="costDetailDeleteBtn" class="btn btn-danger" style="margin-left:8px">Xóa</button>
       </div>
     </div>
   </div>
@@ -111,7 +141,8 @@
   <script src="../assets/js/admin-common.js"></script>
   <script src="../assets/js/seed.js"></script>
   <script>
-    const session = AuthModule.requireAdminAuth(['admin','manager']);
+    const session = AuthModule.requireAdminAuth();
+    const _canEdit = session ? canEdit('shipping-costs', session.role) : false;
     if (session) document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('shipping-costs', session);
 
     let currentCostPage = 1;
@@ -135,31 +166,161 @@
       });
     }
     populateMethodOptions();
+    if (_canEdit) {
+      document.getElementById('topbarActions').innerHTML = '<button class="topbar-btn topbar-btn-primary" onclick="openModal()">+ Thiết lập chi phí</button>';
+    }
+
+    const REGION_GROUPS = [
+      { name: 'Miền Bắc', provinces: ['Hà Nội','Hải Phòng','Quảng Ninh','Bắc Ninh','Bắc Giang','Thái Nguyên','Nam Định','Ninh Bình','Thái Bình','Hà Nam','Hưng Yên','Vĩnh Phúc','Phú Thọ','Lào Cai','Yên Bái','Sơn La','Điện Biên'] },
+      { name: 'Miền Trung', provinces: ['Đà Nẵng','Quảng Nam','Quảng Ngãi','Bình Định','Phú Yên','Khánh Hòa','Ninh Thuận','Bình Thuận','Quảng Bình','Quảng Trị','Thừa Thiên-Huế','Nghệ An','Hà Tĩnh'] },
+      { name: 'Miền Nam', provinces: ['TP.HCM','Cần Thơ','Đồng Nai','Bình Dương','Bà Rịa - Vũng Tàu','Long An','Tiền Giang','Bến Tre','Vĩnh Long','Trà Vinh','An Giang','Kiên Giang','Đồng Tháp','Sóc Trăng','Bạc Liêu','Cà Mau','Tây Ninh','Bình Phước'] }
+    ];
 
     function loadRegions() {
       const methodId = document.getElementById('costMethodId').value;
-      const regionSel = document.getElementById('costRegion');
-      regionSel.innerHTML = '';
+      const regionGroups = document.getElementById('costRegionGroups');
+      const allCheckbox = document.getElementById('costRegionAll');
+      document.getElementById('costRegions').value = '';
       if (!methodId) {
-        regionSel.innerHTML = '<option value="">-- Chọn phương thức trước --</option>';
-        regionSel.disabled = true;
+        regionGroups.innerHTML = '<div style="padding:12px;color:var(--gray-500)">Chọn phương thức trước để hiển thị khu vực.</div>';
+        if (allCheckbox) allCheckbox.checked = false;
+        updateCostRegionTriggerLabel();
         return;
       }
       const method = ShippingModule.getById(methodId);
-      const regions = method?.regions || [];
-      if (!regions.length) {
-        regionSel.innerHTML = '<option value="">-- Phương thức chưa có khu vực --</option>';
-        regionSel.disabled = true;
+      const methodRegions = method?.regions || [];
+      if (!methodRegions.length) {
+        regionGroups.innerHTML = '<div style="padding:12px;color:var(--gray-500)">Phương thức chưa có khu vực.</div>';
+        if (allCheckbox) allCheckbox.checked = false;
+        updateCostRegionTriggerLabel();
         return;
       }
-      regionSel.innerHTML = '<option value="">-- Chọn khu vực --</option>';
-      regions.forEach(r => {
-        const o = document.createElement('option');
-        o.value = r;
-        o.textContent = r;
-        regionSel.appendChild(o);
+      renderCostRegionPicker(methodRegions);
+    }
+
+    function renderCostRegionPicker(methodRegions) {
+      const wrap = document.getElementById('costRegionGroups');
+      if (!wrap) return;
+      let html = '';
+      REGION_GROUPS.forEach(g => {
+        const availableProvinces = g.provinces.filter(p => methodRegions.includes(p));
+        if (!availableProvinces.length) return;
+        html += `<div style="padding:8px;border-bottom:1px solid var(--gray-100)">`;
+        html += `<label style="display:flex;align-items:center;gap:8px;font-weight:600"><input type=\"checkbox\" class=\"costGroupCheckbox\" data-group=\"${g.name}\" onchange=\"onCostRegionGroupToggle('${g.name}',this)\"> ${g.name}</label>`;
+        html += `<div style=\"padding:8px 12px;display:flex;flex-wrap:wrap;gap:8px\">`;
+        availableProvinces.forEach(p => {
+          const safe = p.replace(/"/g, '&quot;');
+          html += `<label style=\"display:flex;align-items:center;gap:8px;padding:4px 0\"><input type=\"checkbox\" class=\"costProvinceCheckbox\" data-province=\"${safe}\" onchange=\"onCostRegionProvinceToggle('${safe}',this)\">${p}</label>`;
+        });
+        html += `</div></div>`;
       });
-      regionSel.disabled = false;
+      wrap.innerHTML = html || '<div style="padding:12px;color:var(--gray-500)">Không có khu vực phù hợp để hiển thị.</div>';
+      const allCb = document.getElementById('costRegionAll');
+      if (allCb) allCb.checked = false;
+      updateCostRegionTriggerLabel();
+    }
+
+    function toggleCostRegionPicker() {
+      const menu = document.getElementById('costRegionPickerMenu');
+      if (!menu) return;
+      menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+      if (menu.style.display === 'block') {
+        setTimeout(() => document.addEventListener('click', closeCostRegionPickerOnOutsideClick));
+      }
+    }
+
+    function closeCostRegionPickerOnOutsideClick(e) {
+      const menu = document.getElementById('costRegionPickerMenu');
+      const wrap = document.getElementById('costRegionPickerWrap');
+      if (!menu || !wrap) return;
+      if (!wrap.contains(e.target)) {
+        menu.style.display = 'none';
+        document.removeEventListener('click', closeCostRegionPickerOnOutsideClick);
+      }
+    }
+
+    function onCostRegionAllChange() {
+      const all = document.getElementById('costRegionAll').checked;
+      Array.from(document.querySelectorAll('.costProvinceCheckbox')).forEach(cb => cb.checked = false);
+      Array.from(document.querySelectorAll('.costGroupCheckbox')).forEach(cb => cb.checked = false);
+      document.getElementById('costRegions').value = all ? 'Tất cả' : '';
+      updateCostRegionTriggerLabel();
+    }
+
+    function onCostRegionGroupToggle(groupName, el) {
+      const checked = el.checked;
+      const group = REGION_GROUPS.find(g => g.name === groupName);
+      if (!group) return;
+      group.provinces.forEach(p => {
+        const cb = Array.from(document.querySelectorAll('.costProvinceCheckbox')).find(x => x.dataset.province === p);
+        if (cb) cb.checked = checked;
+      });
+      const allCheckbox = document.getElementById('costRegionAll');
+      if (allCheckbox) allCheckbox.checked = false;
+      syncCostHiddenRegions();
+    }
+
+    function onCostRegionProvinceToggle(province, el) {
+      if (el.checked) {
+        const allCheckbox = document.getElementById('costRegionAll');
+        if (allCheckbox) allCheckbox.checked = false;
+      }
+      REGION_GROUPS.forEach(g => {
+        if (!g.provinces.includes(province)) return;
+        const groupProvinces = Array.from(document.querySelectorAll('.costProvinceCheckbox')).filter(cb => g.provinces.includes(cb.dataset.province));
+        const allChecked = groupProvinces.length > 0 && groupProvinces.every(cb => cb.checked);
+        const groupCb = Array.from(document.querySelectorAll('.costGroupCheckbox')).find(x => x.dataset.group === g.name);
+        if (groupCb) groupCb.checked = allChecked;
+      });
+      syncCostHiddenRegions();
+    }
+
+    function syncCostHiddenRegions() {
+      const all = document.getElementById('costRegionAll').checked;
+      if (all) {
+        document.getElementById('costRegions').value = 'Tất cả';
+        updateCostRegionTriggerLabel();
+        return;
+      }
+      const selected = Array.from(document.querySelectorAll('.costProvinceCheckbox')).filter(cb => cb.checked).map(cb => cb.dataset.province);
+      document.getElementById('costRegions').value = selected.join(', ');
+      updateCostRegionTriggerLabel();
+    }
+
+    function applyCostRegionsSelection(regions) {
+      const methodId = document.getElementById('costMethodId').value;
+      const method = ShippingModule.getById(methodId);
+      const methodRegions = method?.regions || [];
+      renderCostRegionPicker(methodRegions);
+      if (!regions || !regions.length) return;
+      if (regions.length === 1 && regions[0] === 'Tất cả') {
+        const allCb = document.getElementById('costRegionAll');
+        if (allCb) allCb.checked = true;
+        Array.from(document.querySelectorAll('.costProvinceCheckbox')).forEach(cb => cb.checked = false);
+        Array.from(document.querySelectorAll('.costGroupCheckbox')).forEach(cb => cb.checked = false);
+        document.getElementById('costRegions').value = 'Tất cả';
+        updateCostRegionTriggerLabel();
+        return;
+      }
+      Array.from(document.querySelectorAll('.costProvinceCheckbox')).forEach(cb => {
+        cb.checked = regions.includes(cb.dataset.province);
+      });
+      REGION_GROUPS.forEach(g => {
+        const groupProvinces = Array.from(document.querySelectorAll('.costProvinceCheckbox')).filter(cb => g.provinces.includes(cb.dataset.province));
+        const groupCb = Array.from(document.querySelectorAll('.costGroupCheckbox')).find(x => x.dataset.group === g.name);
+        if (groupCb) groupCb.checked = groupProvinces.length > 0 && groupProvinces.every(cb => cb.checked);
+      });
+      document.getElementById('costRegions').value = regions.join(', ');
+      updateCostRegionTriggerLabel();
+    }
+
+    function updateCostRegionTriggerLabel() {
+      const label = document.getElementById('costRegionTriggerLabel');
+      const all = document.getElementById('costRegionAll')?.checked;
+      if (all) { label.textContent = '🌐 Tất cả'; return; }
+      const selected = Array.from(document.querySelectorAll('.costProvinceCheckbox')).filter(cb => cb.checked).map(cb => cb.dataset.province);
+      if (!selected.length) { label.textContent = '-- Chọn khu vực --'; return; }
+      label.textContent = selected.length <= 3 ? selected.join(', ') : selected.slice(0, 3).join(', ') + '...';
     }
 
     function renderTable() {
@@ -197,8 +358,7 @@
           <td>${r.estimatedDays != null ? r.estimatedDays + ' ngày' : '<span style="color:var(--gray-400)">—</span>'}</td>
           <td style="font-size:12px;color:var(--gray-400)">${formatDate(r.method.updatedAt || r.method.createdAt)}</td>
           <td class="table-actions-cell">
-            <button class="action-btn action-btn-edit" onclick="openEdit('${r.method.id}','${r.region}',${r.cost},${r.estimatedDays ?? ''})">Sửa</button>
-            <button class="action-btn action-btn-delete" onclick="deleteCost('${r.method.id}','${r.region}')">Xóa</button>
+            <button class="action-btn action-btn-view" onclick="openCostDetail('${r.method.id}','${r.region}',${r.cost ?? 'null'},${r.estimatedDays ?? 'null'})">Xem chi tiết</button>
           </td>
         </tr>`).join('');
       renderCostsPagination(totalPages);
@@ -226,21 +386,24 @@
       document.getElementById('editMethodId').value = '';
       document.getElementById('editRegion').value = '';
       document.getElementById('costMethodId').value = '';
-      document.getElementById('costRegion').innerHTML = '';
+      document.getElementById('costRegions').value = '';
       loadRegions();
       document.getElementById('costAmount').value = '';
       document.getElementById('costDays').value = '1';
       document.getElementById('modalTitle').textContent = 'Thiết lập chi phí vận chuyển';
+      document.getElementById('costSaveBtn').textContent = 'Lưu';
       document.getElementById('modalError').style.display = 'none';
       document.getElementById('costModal').style.display = 'flex';
     }
 
     function openEdit(methodId, region, cost, days) {
+      document.getElementById('costSaveBtn').textContent = 'Cập nhật';
       document.getElementById('editMethodId').value = methodId;
       document.getElementById('editRegion').value = region;
       document.getElementById('costMethodId').value = methodId;
+      document.getElementById('costRegions').value = region;
       loadRegions();
-      setTimeout(() => { document.getElementById('costRegion').value = region; }, 50);
+      setTimeout(() => { applyCostRegionsSelection([region]); }, 50);
       document.getElementById('costAmount').value = cost;
       document.getElementById('costDays').value = days || 1;
       document.getElementById('modalTitle').textContent = 'Cập nhật chi phí vận chuyển';
@@ -248,64 +411,88 @@
       document.getElementById('costModal').style.display = 'flex';
     }
 
+    function openCostDetail(methodId, region, cost, days) {
+      const method = ShippingModule.getById(methodId);
+      document.getElementById('costDetailMethod').textContent = method?.name || '—';
+      document.getElementById('costDetailRegion').textContent = region;
+      document.getElementById('costDetailAmount').textContent = cost != null ? formatCurrency(cost) : 'Chưa thiết lập';
+      document.getElementById('costDetailDays').textContent = days != null ? days + ' ngày' : 'Chưa đặt';
+      document.getElementById('costDetailUpdated').textContent = formatDate(method?.updatedAt || method?.createdAt) || '—';
+
+      const editBtn = document.getElementById('costDetailEditBtn');
+      const deleteBtn = document.getElementById('costDetailDeleteBtn');
+      editBtn.style.display = _canEdit ? 'inline-flex' : 'none';
+      deleteBtn.style.display = _canEdit && cost != null ? 'inline-flex' : 'none';
+      editBtn.onclick = () => {
+        closeDetailModal();
+        openEdit(methodId, region, cost != null ? cost : 0, days);
+      };
+      deleteBtn.onclick = () => deleteCost(methodId, region);
+
+      document.getElementById('costDetailModal').style.display = 'flex';
+    }
+
+    function closeDetailModal() { document.getElementById('costDetailModal').style.display = 'none'; }
+
     function closeModal() { document.getElementById('costModal').style.display = 'none'; }
 
     function saveCost() {
       const errEl = document.getElementById('modalError');
       const methodId = document.getElementById('costMethodId').value;
-      const region = document.getElementById('costRegion').value;
+      const hiddenValue = document.getElementById('costRegions').value;
       const amount = parseInt(document.getElementById('costAmount').value);
       const days = parseInt(document.getElementById('costDays').value);
       const editMethodId = document.getElementById('editMethodId').value;
       const editRegion = document.getElementById('editRegion').value;
 
-      if (!methodId || !region) { errEl.textContent = 'Vui lòng điền đầy đủ thông tin'; errEl.style.display = 'flex'; return; }
+      const method = ShippingModule.getById(methodId);
+      const regionList = hiddenValue === 'Tất cả'
+        ? [...new Set(method?.regions || [])]
+        : [...new Set(hiddenValue.split(',').map(s => s.trim()).filter(Boolean))];
+
+      if (!methodId || !regionList.length) { errEl.textContent = 'Vui lòng điền đầy đủ thông tin'; errEl.style.display = 'flex'; return; }
       if (isNaN(amount) || amount < 0) { errEl.textContent = 'Chi phí không hợp lệ'; errEl.style.display = 'flex'; return; }
       if (isNaN(days) || days < 1) { errEl.textContent = 'Thời gian giao không hợp lệ'; errEl.style.display = 'flex'; return; }
 
-      // Check for duplicate BEFORE showing confirm dialog
-      const method = ShippingModule.getById(methodId);
       const costs = [...(method.costs || [])];
-      const exists = costs.some(c => c.region === region);
       const isEdit = !!editMethodId;
-      // If creating new and same region exists -> duplicate
-      if (!isEdit && exists) { errEl.textContent = 'Chi phí cho khu vực này đã tồn tại'; errEl.style.display = 'flex'; return; }
-      // If editing
-      if (isEdit) {
-        // If method unchanged
-        if (editMethodId === methodId) {
-          // If changed region to another existing region -> duplicate
-          if (region !== editRegion && exists) { errEl.textContent = 'Chi phí cho khu vực này đã tồn tại'; errEl.style.display = 'flex'; return; }
-        } else {
-          // Method changed while editing: ensure target method doesn't already have the region
-          if (exists) { errEl.textContent = 'Chi phí cho khu vực này đã tồn tại'; errEl.style.display = 'flex'; return; }
-        }
+      const compareCosts = costs.filter(c => !(isEdit && editMethodId === methodId && c.region === editRegion));
+      const duplicates = regionList.filter(r => compareCosts.some(c => c.region === r));
+      if (duplicates.length) {
+        errEl.textContent = `Chi phí cho khu vực ${duplicates.join(', ')} đã tồn tại`;
+        errEl.style.display = 'flex';
+        return;
       }
 
-      showConfirm('Có muốn cập nhật chi phí vận chuyển không?', () => {
-        const method = ShippingModule.getById(methodId);
-        const costs = [...(method.costs || [])];
-        const isEdit = !!editMethodId;
-        if (isEdit) {
-          // If method unchanged, replace the original entry
-          if (editMethodId === methodId) {
-            const idxOriginal = costs.findIndex(c => c.region === editRegion);
-            if (idxOriginal >= 0) costs.splice(idxOriginal, 1);
-            costs.push({ region, cost: amount, estimatedDays: days });
-          } else {
-            // Method changed while editing
-            costs.push({ region, cost: amount, estimatedDays: days });
-          }
-        } else {
-          // Creating: push new
-          costs.push({ region, cost: amount, estimatedDays: days });
+      const confirmMessage = isEdit
+        ? 'Có muốn cập nhật chi phí vận chuyển không?'
+        : 'Có muốn thêm chi phí vận chuyển không?';
+      const successMessage = isEdit
+        ? 'Cập nhật chi phí vận chuyển thành công!'
+        : 'Thêm chi phí vận chuyển thành công!';
+
+      showConfirm(confirmMessage, () => {
+        if (isEdit && editMethodId && editMethodId !== methodId) {
+          const originalMethod = ShippingModule.getById(editMethodId);
+          const originalCosts = (originalMethod.costs || []).filter(c => c.region !== editRegion);
+          ShippingModule.update(editMethodId, { costs: originalCosts });
         }
 
-        ShippingModule.update(methodId, { costs });
+        const currentMethod = ShippingModule.getById(methodId);
+        let currentCosts = [...(currentMethod.costs || [])];
+        if (isEdit && editMethodId === methodId) {
+          currentCosts = currentCosts.filter(c => c.region !== editRegion && !regionList.includes(c.region));
+        } else {
+          currentCosts = currentCosts.filter(c => !regionList.includes(c.region));
+        }
+
+        regionList.forEach(r => currentCosts.push({ region: r, cost: amount, estimatedDays: days }));
+        ShippingModule.update(methodId, { costs: currentCosts });
+
         closeModal();
         populateMethodOptions();
         renderTable();
-        showSuccess('Cập nhật chi phí vận chuyển thành công!');
+        showSuccess(successMessage);
       });
     }
 
@@ -314,6 +501,7 @@
         const method = ShippingModule.getById(methodId);
         const costs = (method.costs || []).filter(c => c.region !== region);
         ShippingModule.update(methodId, { costs });
+        closeDetailModal();
         renderTable();
         showSuccess('Đã xóa chi phí vận chuyển!');
       });

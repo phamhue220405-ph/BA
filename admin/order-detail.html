@@ -44,7 +44,6 @@
       if (!order) { document.getElementById('orderContent').innerHTML = '<div class="empty-state"><div class="empty-state-icon">😕</div><div class="empty-state-title">Không tìm thấy đơn hàng</div></div>'; return; }
 
       const currentIdx = STATUS_SEQUENCE.indexOf(order.status);
-      const nextStatus = currentIdx >= 0 && currentIdx < STATUS_SEQUENCE.length - 1 ? STATUS_SEQUENCE[currentIdx + 1] : null;
 
       // Check conflicts
       const conflicts = [];
@@ -69,9 +68,13 @@
 
               <!-- Status Actions -->
               ${order.status !== 'da_huy' && order.status !== 'da_tra_do' ? `
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-                ${nextStatus ? `<button class="btn btn-primary btn-sm" onclick="advanceStatus('${nextStatus}')" style="background:var(--admin-primary)">→ Chuyển sang: ${STATUS_LABELS[nextStatus]}</button>` : ''}
-                ${['cho_xac_nhan','da_xac_nhan'].includes(order.status) ? `<button class="btn btn-danger btn-sm" onclick="cancelOrder()">Hủy đơn</button>` : ''}
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;padding:14px;background:var(--gray-50);border-radius:var(--radius-sm)">
+                <label style="font-size:13px;font-weight:600;color:var(--gray-600);white-space:nowrap">Cập nhật trạng thái:</label>
+                <select id="statusSelect" class="form-control" style="width:auto;min-width:180px;font-size:13px;padding:7px 12px">
+                  ${STATUS_SEQUENCE.map(s => `<option value="${s}"${s === order.status ? ' selected' : ''}>${STATUS_LABELS[s]}</option>`).join('')}
+                  <option value="da_huy"${order.status === 'da_huy' ? ' selected' : ''}>Đã hủy</option>
+                </select>
+                <button class="btn btn-primary btn-sm" onclick="saveStatus()" style="background:var(--admin-primary);white-space:nowrap">Lưu trạng thái</button>
               </div>` : ''}
             </div>
 
@@ -136,27 +139,62 @@
                 ${order.discountAmount ? `<div style="display:flex;justify-content:space-between;color:var(--success)"><span>Giảm giá:</span><span>-${formatCurrency(order.discountAmount)}</span></div>` : ''}
                 <hr style="border:none;border-top:1px solid var(--gray-200)">
                 <div style="display:flex;justify-content:space-between;font-weight:700;font-size:16px"><span>Tổng:</span><span style="color:var(--admin-primary)">${formatCurrency(order.totalAmount)}</span></div>
-                <div>TT: <span class="status-badge status-${order.paymentStatus === 'paid' ? 'da_xac_nhan' : 'cho_xac_nhan'}">${order.paymentStatus === 'paid' ? '✅ Đã TT' : '⏳ Chờ TT'}</span></div>
+                <div>TT: <span class="status-badge status-${order.paymentStatus === 'paid' ? 'da_xac_nhan' : order.paymentStatus === 'refunded' ? 'da_huy' : 'cho_xac_nhan'}">${order.paymentStatus === 'paid' ? '✅ Đã TT' : order.paymentStatus === 'refunded' ? '↩️ Đã hoàn' : '⏳ Chờ TT'}</span></div>
                 <div>Cọc: <span class="status-badge status-${order.depositStatus === 'refunded' ? 'da_tra_do' : 'cho_xac_nhan'}">${order.depositStatus === 'refunded' ? '✅ Đã hoàn' : '🔒 Đang giữ'}</span></div>
+              </div>
+              <div style="margin-top:14px;border-top:1px solid var(--gray-100);padding-top:14px;display:grid;gap:10px">
+                <label style="font-size:13px;font-weight:600;color:var(--gray-600)">Cập nhật trạng thái thanh toán</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                  <select id="paymentStatusSelect" class="form-control" style="width:auto;min-width:170px;font-size:13px;padding:8px 12px">
+                    <option value="pending"${order.paymentStatus === 'pending' ? ' selected' : ''}>Chờ thanh toán</option>
+                    <option value="paid"${order.paymentStatus === 'paid' ? ' selected' : ''}>Đã thanh toán</option>
+                    <option value="refunded"${order.paymentStatus === 'refunded' ? ' selected' : ''}>Đã hoàn tiền</option>
+                  </select>
+                  <button class="btn btn-secondary btn-sm" onclick="savePaymentStatus()" style="white-space:nowrap">Lưu TT</button>
+                </div>
               </div>
             </div>
           </div>
         </div>`;
     }
 
-    function advanceStatus(newStatus) {
-      showConfirm(`Chuyển trạng thái sang "${STATUS_LABELS[newStatus]}"?`, () => {
-        OrderModule.updateRentalStatus(orderId, newStatus, session.userId);
-        Toast.show('Đã cập nhật trạng thái', 'success');
+    function saveStatus() {
+      const sel = document.getElementById('statusSelect');
+      if (!sel) return;
+      const newStatus = sel.value;
+      const order = OrderModule.getRentalOrderById(orderId);
+      if (!order) return;
+      if (newStatus === order.status) {
+        showSuccess('Trạng thái không thay đổi.');
+        return;
+      }
+      const label = STATUS_LABELS[newStatus] || newStatus;
+      showConfirm(`Cập nhật trạng thái đơn hàng sang "${label}"?`, () => {
+        if (newStatus === 'da_huy') {
+          OrderModule.cancelRentalOrder(orderId, session.userId);
+        } else {
+          OrderModule.updateRentalStatus(orderId, newStatus, session.userId);
+        }
         renderOrderDetail();
+        showSuccess(`Cập nhật trạng thái thành công!`);
       });
     }
 
-    function cancelOrder() {
-      showConfirm('Hủy đơn hàng này?', () => {
-        OrderModule.cancelRentalOrder(orderId, session.userId);
-        Toast.show('Đã hủy đơn hàng', 'success');
+    function savePaymentStatus() {
+      const sel = document.getElementById('paymentStatusSelect');
+      if (!sel) return;
+      const newPaymentStatus = sel.value;
+      const order = OrderModule.getRentalOrderById(orderId);
+      if (!order) return;
+      if (newPaymentStatus === order.paymentStatus) {
+        showSuccess('Trạng thái thanh toán không thay đổi.');
+        return;
+      }
+      const label = newPaymentStatus === 'paid' ? 'Đã thanh toán' : newPaymentStatus === 'refunded' ? 'Đã hoàn tiền' : 'Chờ thanh toán';
+      showConfirm(`Cập nhật trạng thái thanh toán sang "${label}"?`, () => {
+        OrderModule.updateRentalPaymentStatus(orderId, newPaymentStatus, session.userId);
         renderOrderDetail();
+        showSuccess(`Cập nhật trạng thái thanh toán thành công!`);
       });
     }
 

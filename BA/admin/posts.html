@@ -12,9 +12,16 @@
   <div class="admin-layout">
     <div id="sidebarContainer"></div>
     <main class="admin-main">
-      <div class="admin-topbar">
+      <div class="admin-topbar" style="height:auto;min-height:64px;padding:16px 28px;">
         <div class="topbar-title">📰 Quản lý bài viết</div>
-        <div class="topbar-actions">
+        <div class="topbar-actions" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;width:100%">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;min-width:280px;">
+            <div class="table-search" style="flex:1;min-width:220px;max-width:320px;">
+              <input type="text" id="postsSearchInput" class="form-control" placeholder="Tìm kiếm bài viết..." oninput="applyPostFilters()">
+            </div>
+            <input type="date" id="postStartDateInput" class="form-control" style="max-width:160px;min-width:140px;" onchange="applyPostFilters()" title="Từ ngày đăng">
+            <input type="date" id="postEndDateInput" class="form-control" style="max-width:160px;min-width:140px;" onchange="applyPostFilters()" title="Đến ngày đăng">
+          </div>
           <button class="topbar-btn topbar-btn-primary" onclick="openModal()">+ Tạo bài viết</button>
         </div>
       </div>
@@ -55,8 +62,11 @@
     const session = AuthModule.requireAdminAuth(['admin','manager','marketing']);
     if (session) document.getElementById('sidebarContainer').innerHTML = renderAdminSidebar('posts', session);
 
+    let postSearchQuery = '';
+    let postStartDateFilter = '';
+    let postEndDateFilter = '';
     function renderPosts() {
-      const posts = PromotionModule.getAllPosts();
+      const posts = PromotionModule.getAllPosts({ search: postSearchQuery, startDate: postStartDateFilter, endDate: postEndDateFilter });
       const grid = document.getElementById('postsGrid');
       if (!posts.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">📰</div><div class="empty-state-title">Chưa có bài viết</div></div>'; return; }
       grid.innerHTML = posts.map(p => `
@@ -92,16 +102,26 @@
     }
     function closeModal() { document.getElementById('postModal').style.display = 'none'; }
 
+    function applyPostFilters() {
+      postSearchQuery = document.getElementById('postsSearchInput').value.trim();
+      postStartDateFilter = document.getElementById('postStartDateInput').value;
+      postEndDateFilter = document.getElementById('postEndDateInput').value;
+      renderPosts();
+    }
+
     function savePost() {
       const errEl = document.getElementById('modalError');
       const id = document.getElementById('editId').value;
       const data = { title: document.getElementById('pTitle').value.trim(), content: document.getElementById('pContent').value.trim(), images: document.getElementById('pImages').value.split('\n').map(s=>s.trim()).filter(Boolean), isPublished: document.getElementById('pPublished').checked };
-      if (!data.title || !data.content) { errEl.textContent = 'Vui lòng điền tiêu đề và nội dung'; errEl.style.display = 'flex'; return; }
-      const result = id ? PromotionModule.updatePost(id, data) : PromotionModule.createPost(data);
-      if (result.error) { errEl.textContent = result.error; errEl.style.display = 'flex'; return; }
-      Toast.show(id ? 'Đã cập nhật bài viết' : 'Đã đăng bài viết', 'success');
-      closeModal();
-      renderPosts();
+      if (!data.title || !data.content) { errEl.textContent = 'Vui lòng nhập đầy đủ thông tin'; errEl.style.display = 'flex'; return; }
+      showConfirm(id ? 'Cập nhật bài viết này?' : 'Tạo bài viết mới?', () => {
+        const result = id ? PromotionModule.updatePost(id, data) : PromotionModule.createPost(data);
+        if (result.error) { errEl.textContent = result.error; errEl.style.display = 'flex'; return; }
+        Toast.show(id ? 'Đã cập nhật bài viết' : 'Đã đăng bài viết', 'success');
+        closeModal();
+        renderPosts();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
     }
 
     function deletePost(id) {

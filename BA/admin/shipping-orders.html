@@ -71,11 +71,10 @@
               <thead>
                 <tr>
                   <th>Mã đơn</th>
-                  <th>Khách hàng</th>
                   <th>Địa chỉ giao</th>
+                  <th>Khách hàng</th>
                   <th>Phương thức VC</th>
                   <th>Phí VC</th>
-                  <th>Trạng thái giao hàng</th>
                   <th>Ngày tạo</th>
                   <th>Thao tác</th>
                 </tr>
@@ -89,20 +88,42 @@
     </main>
   </div>
 
-  <!-- Confirm Receipt Modal -->
-  <div id="receiptModal" class="modal-overlay" style="display:none">
-    <div class="modal" style="max-width:440px">
+  <!-- Detail Modal -->
+  <div id="detailModal" class="modal-overlay" style="display:none">
+    <div class="modal" style="max-width:500px">
       <div class="modal-header">
-        <div class="modal-title">✅ Xác nhận giao hàng thành công</div>
-        <button class="modal-close" onclick="closeReceiptModal()">✕</button>
+        <div class="modal-title">Chi tiết đơn vận chuyển</div>
+        <button class="modal-close" onclick="closeDetailModal()">✕</button>
       </div>
-      <input type="hidden" id="receiptOrderId">
-      <div id="receiptInfo" style="background:var(--gray-50);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px;font-size:14px"></div>
-      <div class="alert alert-info">ℹ️ Sau khi xác nhận, trạng thái đơn hàng sẽ chuyển sang <strong>Đang thuê</strong>.</div>
+      <input type="hidden" id="detailOrderId">
+      <div style="padding:16px 0;border-bottom:1px solid var(--gray-200)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>Mã đơn</strong><span id="detailOrderRef"></span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>Khách hàng</strong><span id="detailCustomer"></span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>SĐT</strong><span id="detailPhone"></span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>Địa chỉ</strong><span id="detailAddress" style="text-align:right;max-width:50%"></span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>Phí VC</strong><span id="detailShippingCost"></span></div>
+      </div>
+      <div style="padding:16px 0;border-bottom:1px solid var(--gray-200)">
+        <label style="display:block;font-weight:600;margin-bottom:8px">Phương thức vận chuyển</label>
+        <select id="detailMethodSelect" class="form-control" style="width:100%">
+          <option value="">-- Chọn phương thức --</option>
+        </select>
+      </div>
+      <div id="detailError" class="alert alert-error" style="display:none;margin-bottom:16px"></div>
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeReceiptModal()">Hủy</button>
-        <button class="btn btn-primary" onclick="confirmReceipt()" style="background:var(--success)">✅ Xác nhận đã giao</button>
+        <button class="btn btn-secondary" onclick="closeDetailModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="saveDetailChanges()" style="background:var(--admin-primary)">Lưu</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div id="successModal" class="modal-overlay" style="display:none">
+    <div class="modal" style="max-width:400px;text-align:center">
+      <div style="font-size:48px;margin-bottom:16px">✅</div>
+      <div class="modal-title">Cập nhật thành công</div>
+      <div style="color:var(--gray-600);font-size:14px;margin-bottom:24px;margin-top:8px" id="successMessage"></div>
+      <button class="btn btn-primary" onclick="closeSuccessModal()" style="background:var(--admin-primary);width:100%">OK</button>
     </div>
   </div>
 
@@ -178,36 +199,23 @@
 
       tbody.innerHTML = paged.items.map(o => {
         const method = o.shippingMethodId ? ShippingModule.getById(o.shippingMethodId) : null;
-        const deliveryStatus = o.deliveryStatus || 'cho_xac_nhan';
-
-        // Build dropdown options
-        const options = DELIVERY_STATUSES.map(s =>
-          `<option value="${s.value}" ${s.value === deliveryStatus ? 'selected' : ''}>${s.label}</option>`
-        ).join('');
 
         return `<tr>
           <td>
             <a href="/admin/order-detail.html?id=${o.id}" style="color:var(--admin-primary);font-weight:600">${o.orderRef}</a>
           </td>
+          <td style="font-size:13px;max-width:180px">
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${o.deliveryInfo?.address || ''}">${o.deliveryInfo?.address || '-'}</div>
+          </td>
           <td>
             <div style="font-weight:500">${o.customerName}</div>
             <div style="font-size:12px;color:var(--gray-400)">${o.deliveryInfo?.phone || ''}</div>
           </td>
-          <td style="font-size:13px;max-width:180px">
-            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${o.deliveryInfo?.address || ''}">${o.deliveryInfo?.address || '-'}</div>
-          </td>
           <td style="font-size:13px">${method ? method.name : '<span style="color:var(--gray-400)">—</span>'}</td>
           <td style="font-weight:600">${o.shippingCost ? formatCurrency(o.shippingCost) : '—'}</td>
-          <td>
-            <select
-              class="delivery-select status-${deliveryStatus}"
-              onchange="onStatusChange(this, '${o.id}')"
-              ${!_canEdit ? 'disabled title="Bạn không có quyền chỉnh sửa"' : ''}
-            >${options}</select>
-          </td>
           <td style="font-size:12px;color:var(--gray-500)">${formatDate(o.createdAt)}</td>
           <td>
-            <a href="/admin/order-detail.html?id=${o.id}" class="action-btn action-btn-view">Xem</a>
+            <button class="action-btn action-btn-view" onclick="openDetailModal('${o.id}')">Xem chi tiết</button>
           </td>
         </tr>`;
       }).join('');
@@ -217,28 +225,73 @@
 
     function goPage(p) { currentPage = p; renderTable(); }
 
-    function onStatusChange(selectEl, orderId) {
-      const newStatus = selectEl.value;
-      const oldStatus = selectEl.dataset.prev || selectEl.querySelector('[selected]')?.value;
+    function openDetailModal(orderId) {
+      if (!_canEdit) {
+        Toast.show('Bạn không có quyền chỉnh sửa', 'error');
+        return;
+      }
+      
+      const order = StorageService.getById('crb_rental_orders', orderId);
+      if (!order) return;
 
-      // If changing to "Đã giao" → require confirmation modal
-      if (newStatus === 'da_giao') {
-        // Revert visual until confirmed
-        selectEl.value = oldStatus || 'dang_giao';
-        openReceiptModal(orderId, selectEl);
+      document.getElementById('detailOrderId').value = orderId;
+      document.getElementById('detailOrderRef').textContent = order.orderRef;
+      document.getElementById('detailCustomer').textContent = order.customerName;
+      document.getElementById('detailPhone').textContent = order.deliveryInfo?.phone || '—';
+      document.getElementById('detailAddress').textContent = order.deliveryInfo?.address || '—';
+      document.getElementById('detailShippingCost').textContent = order.shippingCost ? formatCurrency(order.shippingCost) : '—';
+      
+      // Populate method dropdown
+      const methodSel = document.getElementById('detailMethodSelect');
+      methodSel.innerHTML = '<option value="">-- Chọn phương thức --</option>';
+      allMethods.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.name;
+        if (m.id === order.shippingMethodId) opt.selected = true;
+        methodSel.appendChild(opt);
+      });
+
+      document.getElementById('detailError').style.display = 'none';
+      document.getElementById('detailModal').style.display = 'flex';
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detailModal').style.display = 'none';
+    }
+
+    function saveDetailChanges() {
+      const orderId = document.getElementById('detailOrderId').value;
+      const newMethodId = document.getElementById('detailMethodSelect').value;
+      const errEl = document.getElementById('detailError');
+
+      if (!newMethodId) {
+        errEl.textContent = 'Vui lòng chọn phương thức vận chuyển';
+        errEl.style.display = 'flex';
         return;
       }
 
-      // Update class for color
-      selectEl.className = `delivery-select status-${newStatus}`;
-      selectEl.dataset.prev = newStatus;
+      const order = StorageService.getById('crb_rental_orders', orderId);
+      const oldMethod = order.shippingMethodId ? ShippingModule.getById(order.shippingMethodId) : null;
+      const newMethod = ShippingModule.getById(newMethodId);
 
-      StorageService.update('crb_rental_orders', orderId, {
-        deliveryStatus: newStatus,
-        updatedAt: new Date().toISOString()
-      });
-      Toast.show('Cập nhật trạng thái đơn hàng thành công', 'success');
-      renderStats();
+      showConfirm(
+        `Cập nhật phương thức vận chuyển từ "${oldMethod ? oldMethod.name : 'Chưa chọn'}" sang "${newMethod.name}"?`,
+        () => {
+          StorageService.update('crb_rental_orders', orderId, {
+            shippingMethodId: newMethodId,
+            updatedAt: new Date().toISOString()
+          });
+          closeDetailModal();
+          document.getElementById('successMessage').textContent = `Phương thức vận chuyển đã cập nhật thành ${newMethod.name}`;
+          document.getElementById('successModal').style.display = 'flex';
+          applyFilters();
+        }
+      );
+    }
+
+    function closeSuccessModal() {
+      document.getElementById('successModal').style.display = 'none';
     }
 
     function openReceiptModal(orderId, triggerSelect) {
