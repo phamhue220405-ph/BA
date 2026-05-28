@@ -140,7 +140,7 @@
         }
         StorageService.update('crb_users', id, { fullName: name, email, phone, role });
       } else {
-        StorageService.save('crb_users', { fullName: name, email, phone, role, passwordHash: btoa('Default@123_crb_salt'), isActive: true, deleted: false, loyaltyPoints: 0, bankAccount: { bankName: '', accountNumber: '' }, avatar: '', address: '' });
+        StorageService.save('crb_users', { fullName: name, email, phone, role, passwordHash: btoa('Default@123'), isActive: true, deleted: false, loyaltyPoints: 0, bankAccount: { bankName: '', accountNumber: '' }, avatar: '', address: '' });
       }
       Toast.show(id ? 'Đã cập nhật nhân viên' : 'Đã thêm nhân viên (mật khẩu: Default@123)', 'success');
       closeModal();

@@ -74,7 +74,7 @@ const CustomerModule = {
       address: data.address?.trim() || '',
       note: data.note?.trim() || '',
       role: 'customer',
-      passwordHash: btoa('default_crb_salt'),
+      passwordHash: btoa('default'),
       loyaltyPoints: 0,
       isActive: data.isActive !== false,
       deleted: false,

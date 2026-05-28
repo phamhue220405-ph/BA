@@ -10,7 +10,7 @@ const AuthModule = {
   },
 
   hashPassword(pwd) {
-    return btoa(pwd + '_crb_salt');
+    return btoa(pwd);
   },
 
   register(formData) {
